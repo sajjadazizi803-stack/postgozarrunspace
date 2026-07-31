@@ -88,3 +88,56 @@ async def receive_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>{e}</code>""",
             parse_mode="HTML",
         )
+
+
+from telethon.errors import SessionPasswordNeededError
+
+# =========================
+# receive code
+# =========================
+
+
+async def receive_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    if not context.user_data.get("waiting_code"):
+        return
+
+    code = update.message.text.strip()
+
+    client = context.user_data.get("client")
+    phone = context.user_data.get("phone")
+
+    try:
+
+        await client.sign_in(
+            phone=phone,
+            code=code,
+        )
+
+        context.user_data["waiting_code"] = False
+
+        await update.message.reply_text("""✅ اکانت با موفقیت متصل شد.
+
+🎉 از این به بعد می‌توانید انتقال جدید ایجاد کنید.""")
+
+        await client.disconnect()
+
+    except SessionPasswordNeededError:
+
+        context.user_data["waiting_password"] = True
+        context.user_data["waiting_code"] = False
+
+        await update.message.reply_text(
+            """🔐 این اکانت دارای رمز دوم (Two-Step Verification) است.
+
+لطفاً رمز دوم را ارسال کنید."""
+        )
+
+    except Exception as e:
+
+        await update.message.reply_text(
+            f"""❌ ورود ناموفق بود.
+
+<code>{e}</code>""",
+            parse_mode="HTML",
+        )
