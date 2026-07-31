@@ -135,9 +135,17 @@ async def receive_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
 
-        await update.message.reply_text(
-            f"""❌ ورود ناموفق بود.
+        # لاگ کامل داخل Railway
+        print("========== LOGIN ERROR ==========")
+        print(type(e))
+        print(repr(e))
+        print("================================")
 
-<code>{e}</code>""",
+        await update.message.reply_text(
+            f"""❌ ورود ناموفق شد.
+
+<code>{type(e).name}</code>
+
+<code>{repr(e)}</code>""",
             parse_mode="HTML",
         )
