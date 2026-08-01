@@ -1,0 +1,11 @@
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+import config
+
+SESSION_STRING = "1BJWap1sBuzbjNHncWlW77EdDY1JdAhPSr93nLn23ScoZKj0WOnnWMpxS9mDBa8j1nDqCwHB5rWmFs_xnFKK1yJi45KYwJ3yUvwzR-xD57xTTG7qAX_wX815v2NkbHBYCVuUPksABVNz_BnFVraDTIGccdpXPRH-Tu_4fNpiYl35BTPXHVz9kWVTKfx7lAbno9azPzlexY3aj53QmX1HCylnO6kMDe0AyvXvIUNQx2AO6Czxygf5QzEeJls5wWPmAxXhnK9P6Lo3w__A9fwLaw37ThxoWQ5c81Cx_erJApItI6RG1GCLoIJ4s7uSn_bvmPStziHrI-kwV_srjOJrfkvROYuq5Az4="
+
+tg_client = TelegramClient(
+    StringSession(SESSION_STRING),
+    config.API_ID,
+    config.API_HASH,
+)

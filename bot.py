@@ -21,25 +21,7 @@ from handlers.connect_account import (
 )
 
 import config
-from telethon import TelegramClient
-from telethon.sessions import StringSession
-import os  # <-- این خط رو اضافه کن
-
-# =========================
-# استفاده از فایل سشن به جای StringSession
-# =========================
-
-# مسیر ذخیره سشن در پوشه موقت (برای سرور)
-SESSION_PATH = "/tmp/sessions/my_account.session"
-
-# ساخت پوشه اگر وجود نداشت
-os.makedirs("/tmp/sessions/", exist_ok=True)
-
-tg_client = TelegramClient(
-    SESSION_PATH,  # <-- به جای StringSession از فایل استفاده کن
-    config.API_ID,
-    config.API_HASH,
-)
+from telegram_client import tg_client
 
 # =========================
 # START

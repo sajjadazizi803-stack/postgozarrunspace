@@ -2,7 +2,7 @@ from telethon import TelegramClient, events
 import os
 import config
 from database import get_all_transfers
-from bot import tg_client
+from telegram_client import tg_client
 
 # =========================
 # Global
@@ -23,7 +23,6 @@ async def register_listener(
 ):
 
     key = (
-        client.session.filename,
         source_channel,
         target_channel,
     )
@@ -83,6 +82,9 @@ async def register_listener(
 
 
 async def start_all_listeners():
+
+    if not tg_client.is_connected():
+        await tg_client.connect()
 
     print("========== start_all_listeners ==========")
 
