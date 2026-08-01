@@ -91,6 +91,26 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
+# conversation router
+# =========================
+
+from handlers.connect_account import (
+    connect_account,
+    receive_source_channel,
+    receive_target_channel,
+)
+
+
+async def conversation_router(update, context):
+
+    if context.user_data.get("state") == State.SOURCE_CHANNEL:
+        return await receive_source_channel(update, context)
+
+    if context.user_data.get("state") == State.TARGET_CHANNEL:
+        return await receive_target_channel(update, context)
+
+
+# =========================
 # CREATE BOT
 # =========================
 
@@ -117,13 +137,7 @@ def create_bot():
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
-            receive_target_channel,
-        )
-    )
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            receive_source_channel,
+            conversation_router,
         )
     )
 
