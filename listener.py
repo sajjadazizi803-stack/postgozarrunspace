@@ -35,13 +35,18 @@ async def register_listener(
         source_entity = await client.get_input_entity(source_channel)
         target_entity = await client.get_input_entity(target_channel)
 
-    except Exception:
+    except Exception as e:
+        print("REGISTER ERROR:", e)
         return
 
-    @client.on(events.NewMessage(chats=source_entity))
+    @client.on(events.NewMessage)
     async def new_post(event):
 
         try:
+
+            # فقط پیام‌های کانال مبدا
+            if event.chat_id != source_entity.channel_id:
+                return
 
             message = event.message
 
@@ -62,8 +67,8 @@ async def register_listener(
                     message=message.text or "",
                 )
 
-        except Exception:
-            pass
+        except Exception as e:
+            print("TRANSFER ERROR:", e)
 
     registered_listeners.add(key)
 
