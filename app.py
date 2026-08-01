@@ -1,14 +1,25 @@
 from bot import create_bot
 from telegram_client import tg_client
 from listener import start_all_listeners
+
 import asyncio
+
+
+async def telethon_worker():
+
+    if not tg_client.is_connected():
+        await tg_client.connect()
+
+    await start_all_listeners()
+
+    print("✅ Telethon Started")
+
+    await tg_client.run_until_disconnected()
 
 
 async def startup(app):
 
-    await tg_client.connect()
-
-    await start_all_listeners()
+    asyncio.create_task(telethon_worker())
 
     print("🚀 PostGozar Bot Started Successfully.")
 

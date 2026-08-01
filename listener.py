@@ -44,8 +44,6 @@ async def register_listener(
     @client.on(events.NewMessage)
     async def new_post(event):
 
-        print("📩 NEW MESSAGE:", event.chat_id)
-
         try:
 
             if event.chat.id != source_id:
