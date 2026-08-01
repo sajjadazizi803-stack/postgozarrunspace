@@ -20,8 +20,16 @@ from handlers.connect_account import (
     receive_target_channel,
 )
 
+from handlers.connect_account import (
+    delete_transfer_callback,
+    toggle_transfer_callback,
+    back_to_registered_channels,
+)
+
 import config
 from telegram_client import tg_client
+from handlers.connect_account import registered_channels
+from handlers.connect_account import transfer_info
 
 # =========================
 # START
@@ -73,12 +81,19 @@ from conversation import State
 
 async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    # اگر داخل یک گفتگو هستیم، هیچ کاری نکن
+    # اگر داخل یکی از مراحل گفتگو هستیم، دکمه‌های اصلی کار نکنند
     if context.user_data.get("state", State.NONE) != State.NONE:
         return
 
-    if update.message.text == "📢 افزودن کانال":
+    text = update.message.text
+
+    if text == "📢 افزودن کانال":
         await connect_account(update, context)
+        return
+
+    if text == "📋 کانال‌های ثبت شده":
+        await registered_channels(update, context)
+        return
 
 
 # =========================
@@ -115,6 +130,36 @@ async def conversation_router(update, context):
 def create_bot():
 
     app = Application.builder().token(config.BOT_TOKEN).build()
+
+    from telegram.ext import CallbackQueryHandler
+
+    app.add_handler(
+        CallbackQueryHandler(
+            transfer_info,
+            pattern=r"^transfer_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            delete_transfer_callback,
+            pattern=r"^delete_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            toggle_transfer_callback,
+            pattern=r"^toggle_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            back_to_registered_channels,
+            pattern=r"^registered_channels$",
+        )
+    )
 
     app.add_handler(
         CommandHandler(

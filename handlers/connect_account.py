@@ -2,7 +2,14 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from conversation import State
 from database import add_transfer
-from listener import add_new_transfer  # اضافه شد
+from listener import add_new_transfer
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from database import get_user_transfers
+
+from database import (
+    delete_transfer,
+    set_transfer_enabled,
+)
 
 # =========================
 # connect account
@@ -15,16 +22,12 @@ async def connect_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(
             """📢 لطفاً لینک یا یوزرنیم کانال مبدا را ارسال کنید.
-
-مثال:
-@source_channel"""
+مثال: @source_channel"""
         )
     else:
         await update.message.reply_text(
             """📢 لطفاً لینک یا یوزرنیم کانال مبدا را ارسال کنید.
-
-مثال:
-@source_channel"""
+مثال: @source_channel"""
         )
 
     context.user_data["state"] = State.SOURCE_CHANNEL
@@ -45,13 +48,10 @@ async def receive_source_channel(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data["state"] = State.TARGET_CHANNEL
 
     await update.message.reply_text(f"""✅ کانال مبدا ثبت شد.
-
 📢 {source_channel}
 
 حالا لینک یا یوزرنیم کانال مقصد را ارسال کنید.
-
-مثال:
-@target_channel""")
+مثال: @target_channel""")
 
 
 # =========================
@@ -105,13 +105,186 @@ async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_T
     # پایان گفتگو
     context.user_data["state"] = State.NONE
 
-    await update.message.reply_text(f"""✅ انتقال با موفقیت ثبت و فعال شد.
+    await update.message.reply_text(
+        f"""✅ انتقال با موفقیت ثبت و فعال شد.
 
-📥 کانال مبدا:
-{source_channel}
+📥 کانال مبدا: {source_channel}
+📤 کانال مقصد: {target_channel}
 
-📤 کانال مقصد:
-{target_channel}
+🚀 از این به بعد هر پست جدیدی که در کانال مبدا منتشر شود، به صورت خودکار در کانال مقصد نیز ارسال خواهد شد."""
+    )
 
-🚀 از این به بعد هر پست جدیدی که در کانال مبدا منتشر شود،
-به صورت خودکار در کانال مقصد نیز ارسال خواهد شد.""")
+
+# -------------------- registered channels --------------------
+
+
+async def registered_channels(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    transfers = get_user_transfers(user_id)
+
+    if not transfers:
+        await update.message.reply_text("❌ هنوز هیچ کانالی ثبت نکرده‌اید.")
+        return
+
+    keyboard = []
+
+    for transfer in transfers:
+
+        transfer_id = transfer[0]
+        source = transfer[1]
+        target = transfer[2]
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{source} ➜ {target}", callback_data=f"transfer_{transfer_id}"
+                )
+            ]
+        )
+
+    await update.message.reply_text(
+        "📋 کانال‌های ثبت شده شما:", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+# -------------------- transfer info --------------------
+
+
+async def transfer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[1])
+
+    transfers = get_user_transfers(query.from_user.id)
+
+    transfer = None
+
+    for item in transfers:
+        if item[0] == transfer_id:
+            transfer = item
+            break
+
+    if transfer is None:
+        await query.edit_message_text("❌ انتقال پیدا نشد.")
+        return
+
+    source = transfer[1]
+    target = transfer[2]
+    enabled = transfer[3]
+    sent_count = transfer[4]
+    last_send = transfer[5]
+
+    status = "🟢 فعال" if enabled else "🔴 متوقف"
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "⏸ توقف" if enabled else "▶️ فعال",
+                callback_data=f"toggle_{transfer_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🗑 حذف انتقال",
+                callback_data=f"delete_{transfer_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_channels",
+            )
+        ],
+    ]
+
+    await query.edit_message_text(
+        f"""📡 اطلاعات انتقال
+
+📥 مبدا: {source}
+📤 مقصد: {target}
+📨 تعداد پیام: {sent_count}
+🕒 آخرین انتقال: {last_send if last_send else "هنوز انتقالی انجام نشده"}
+
+📊 وضعیت: {status}
+""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+# -------------------- back to registered channels --------------------
+
+
+async def back_to_registered_channels(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfers = get_user_transfers(query.from_user.id)
+
+    keyboard = []
+
+    for transfer in transfers:
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{transfer[1]} ➜ {transfer[2]}",
+                    callback_data=f"transfer_{transfer[0]}",
+                )
+            ]
+        )
+
+    await query.edit_message_text(
+        "📋 کانال‌های ثبت شده شما:", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+# -------------------- bdelete transfer callback --------------------
+
+
+async def delete_transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[1])
+
+    delete_transfer(transfer_id)
+
+    await back_to_registered_channels(update, context)
+
+
+# -------------------- toggle transfer callback --------------------
+
+
+async def toggle_transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[1])
+
+    transfers = get_user_transfers(query.from_user.id)
+
+    for transfer in transfers:
+
+        if transfer[0] == transfer_id:
+
+            enabled = transfer[3]
+
+            set_transfer_enabled(
+                transfer_id,
+                0 if enabled else 1,
+            )
+
+            break
+
+    query.data = f"transfer_{transfer_id}"
+
+    await transfer_info(update, context)
