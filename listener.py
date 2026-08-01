@@ -49,6 +49,9 @@ async def start_all_listeners():
             target,
         )
 
+    for client in clients.values():
+        client.loop.create_task(client.run_until_disconnected())
+
     print("✅ Listeners Started.")
 
 
