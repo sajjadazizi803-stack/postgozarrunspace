@@ -107,15 +107,20 @@ async def start_all_listeners():
 
         if telegram_id not in clients:
 
-            client = TelegramClient(
-                session_name,
-                config.API_ID,
-                config.API_HASH,
-            )
+            try:
+                client = TelegramClient(
+                    session_name,
+                    config.API_ID,
+                    config.API_HASH,
+                )
 
-            await client.start()
+                await client.start()
 
-            clients[telegram_id] = client
+                clients[telegram_id] = client
+
+            except Exception as e:
+                print(f"❌ Client start error for {telegram_id}: {e}")
+                continue  # <-- این خط اضافه شده
 
         client = clients[telegram_id]
 
@@ -126,3 +131,33 @@ async def start_all_listeners():
         )
 
     print("✅ All Listeners Started.")
+
+
+# ----------------- add new transfer -----------------
+
+
+async def add_new_transfer(telegram_id, source_channel, target_channel):
+    """ثبت لیسنر برای انتقال جدید بدون نیاز به ری‌استارت"""
+
+    session_name = f"sessions/{telegram_id}"
+
+    # اگر کلاینت وجود نداشت، ایجاد کن
+    if telegram_id not in clients:
+        client = TelegramClient(
+            session_name,
+            config.API_ID,
+            config.API_HASH,
+        )
+        await client.start()
+        clients[telegram_id] = client
+
+    client = clients[telegram_id]
+
+    # ثبت لیسنر جدید
+    await register_listener(
+        client,
+        source_channel,
+        target_channel,
+    )
+
+    print(f"✅ New listener added: {source_channel} -> {target_channel}")
