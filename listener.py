@@ -43,24 +43,55 @@ async def start_all_listeners():
 
         client = clients[telegram_id]
 
-        register_listener(
-            client,
-            source,
-            target,
-        )
+        try:
 
-    for client in clients.values():
-        client.loop.create_task(client.run_until_disconnected())
+            source_entity = await client.get_entity(source)
+
+            @client.on(events.NewMessage(chats=source_entity))
+            async def new_post(event, target=target):
+
+                try:
+
+                    if event.message.media:
+
+                        file = await event.message.download_media()
+
+                        await client.send_file(
+                            target,
+                            file=file,
+                            caption=event.message.text or "",
+                        )
+
+                    else:
+
+                        await client.send_message(
+                            target,
+                            event.message.text or "",
+                        )
+
+                    print(f"✅ {source} -> {target}")
+
+                except Exception as e:
+
+                    print(f"❌ Forward Error: {e}")
+
+            print(f"✅ Listener registered: {source}")
+
+        except Exception as e:
+
+            print(f"❌ Listener register failed: {e}")
 
     print("✅ Listeners Started.")
 
 
-# ----------------- register start all listeners --------------
+# ----------------- register listeners --------------
+
+
+from telethon import events
 
 
 def register_listener(client, source_channel, target_channel):
 
-    @client.on(events.NewMessage(chats=source_channel))
     async def new_post(event):
 
         message = event.message
@@ -84,8 +115,27 @@ def register_listener(client, source_channel, target_channel):
                     message.text or "",
                 )
 
-            print(f"✅ {source_channel} -> {target_channel}")
+            print(f"✅ Forwarded: {source_channel} -> {target_channel}")
 
         except Exception as e:
 
-            print(e)
+            print(f"❌ Forward Error: {e}")
+
+    async def setup():
+
+        try:
+
+            source_entity = await client.get_entity(source_channel)
+
+            client.add_event_handler(
+                new_post,
+                events.NewMessage(chats=source_entity),
+            )
+
+            print(f"✅ Listener registered: {source_channel}")
+
+        except Exception as e:
+
+            print(f"❌ Listener register failed: {e}")
+
+    client.loop.create_task(setup())

@@ -103,11 +103,17 @@ from handlers.connect_account import (
 
 async def conversation_router(update, context):
 
-    if context.user_data.get("state") == State.SOURCE_CHANNEL:
+    user_data = context.user_data or {}
+
+    state = user_data.get("state", State.NONE)
+
+    if state == State.SOURCE_CHANNEL:
         return await receive_source_channel(update, context)
 
-    if context.user_data.get("state") == State.TARGET_CHANNEL:
+    if state == State.TARGET_CHANNEL:
         return await receive_target_channel(update, context)
+
+    return
 
 
 # =========================
