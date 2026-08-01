@@ -2,7 +2,9 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
 )
+
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -11,12 +13,24 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+
 from handlers.connect_account import (
     connect_account,
-    receive_phone,
+    receive_source_channel,
+    receive_target_channel,
 )
 
 import config
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+
+SESSION_STRING = "1BJWap1wBu7t-Bk8MkUr87Izyg0ZY4uro9zk1Rss1-ZbG2BmguQRVK8m2J1HlrH0z7n8yPzKKy3qhGZaf6-I-jRw6ZUqF-CwPlCsAHM7wb5OXNxXr-RKM2kMWj5zrJeKrqlfqRlIwmWpxUVyeegbD57WI0agh3oLYQ9w-4DxHG2w82Gro_Syvt7VhRrMqnZTDjS4Q4R42c_v18uT7O4Q2MzYwRpQX1LWThaxRHbHMEIMXGF6HpwAVsFN9hdQczoIZeUh66HmhhVKzgIavIVheuI6CPZhx2XCxDp2OBCBKOEvwBu7kZmSiKipc2-WMIPAsc9_Gjnx9elXDBu9TicYO8YS3GWLTZUY="
+
+tg_client = TelegramClient(
+    StringSession(SESSION_STRING),
+    config.API_ID,
+    config.API_HASH,
+)
 
 # =========================
 # START
@@ -25,33 +39,11 @@ import config
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    keyboard = InlineKeyboardMarkup(
+    keyboard = ReplyKeyboardMarkup(
         [
-            [
-                InlineKeyboardButton(
-                    "➕ اتصال اکانت",
-                    callback_data="connect_account",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "📋 لیست انتقال‌ها",
-                    callback_data="transfer_list",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "➕ ساخت انتقال جدید",
-                    callback_data="new_transfer",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "⚙ تنظیمات",
-                    callback_data="settings",
-                )
-            ],
-        ]
+            ["📢 افزودن کانال"],
+        ],
+        resize_keyboard=True,
     )
 
     await update.message.reply_text(
@@ -59,12 +51,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 با این ربات می‌توانید:
 
-• اکانت تلگرام خود را متصل کنید.
 • یک کانال مبدا انتخاب کنید.
 • یک کانال مقصد انتخاب کنید.
-• پست‌های کانال مبدا را به صورت خودکار در مقصد منتشر کنید.
-
-یکی از گزینه‌های زیر را انتخاب کنید.""",
+• پست‌های کانال مبدا را به صورت خودکار در مقصد منتشر کنید.""",
         reply_markup=keyboard,
     )
 
@@ -80,20 +69,25 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "connect_account":
-
         await connect_account(update, context)
 
-    elif query.data == "transfer_list":
 
-        await query.edit_message_text("📋 هنوز انتقالی ثبت نشده است.")
+# =========================
+# text buttons
+# =========================
 
-    elif query.data == "new_transfer":
 
-        await query.edit_message_text("➕ ساخت انتقال جدید\n\n(به زودی)")
+from conversation import State
 
-    elif query.data == "settings":
 
-        await query.edit_message_text("⚙ تنظیمات\n\n(به زودی)")
+async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    # اگر داخل یک گفتگو هستیم، هیچ کاری نکن
+    if context.user_data.get("state", State.NONE) != State.NONE:
+        return
+
+    if update.message.text == "📢 افزودن کانال":
+        await connect_account(update, context)
 
 
 # =========================
@@ -116,9 +110,23 @@ def create_bot():
 
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            receive_phone,
+            filters.Regex("^📢 افزودن کانال$"),
+            text_buttons,
         )
     )
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            receive_target_channel,
+        )
+    )
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            receive_source_channel,
+        )
+    )
+
+    app.bot_data["tg_client"] = tg_client
 
     return app

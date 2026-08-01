@@ -1,8 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from telethon import TelegramClient
-import config
-import os
+from conversation import State
+from database import add_transfer
 
 # =========================
 # connect account
@@ -11,141 +10,94 @@ import os
 
 async def connect_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    query = update.callback_query
-    await query.answer()
+    if update.callback_query:
+        await update.callback_query.answer()
 
-    context.user_data["waiting_phone"] = True
-
-    await query.edit_message_text("""📱 اتصال اکانت تلگرام
-
-لطفاً شماره تلفن اکانت تلگرام خود را ارسال کنید.
-
-نمونه:
-
-+989121234567
-
-⚠️ شماره را همراه با کد کشور ارسال کنید.""")
-
-
-# =========================
-# receive phone
-# =========================
-
-
-async def receive_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    if not context.user_data.get("waiting_phone"):
-        return
-
-    phone = update.message.text.strip()
-
-    context.user_data["waiting_phone"] = False
-    context.user_data["phone"] = phone
-
-    session_name = os.path.join(
-        config.SESSION_FOLDER,
-        str(update.effective_user.id),
-    )
-
-    client = TelegramClient(
-        session_name,
-        config.API_ID,
-        config.API_HASH,
-        connection_retries=1,
-        timeout=20,
-    )
-
-    try:
-        await client.connect()
-
-        await client.send_code_request(phone)
-
-        context.user_data["client"] = client
-        context.user_data["waiting_code"] = True
-
-        await update.message.reply_text(
-            f"""📨 کد تأیید به شماره
-
-<code>{phone}</code>
-
-ارسال شد.
-
-لطفاً کد ۵ رقمی دریافتی از تلگرام را ارسال کنید.
+        await update.callback_query.edit_message_text(
+            """📢 لطفاً لینک یا یوزرنیم کانال مبدا را ارسال کنید.
 
 مثال:
-
-<code>12345</code>""",
-            parse_mode="HTML",
+@source_channel"""
         )
-
-    except Exception as e:
-
-        await client.disconnect()
-
+    else:
         await update.message.reply_text(
-            f"""❌ خطا در ارسال کد تأیید.
+            """📢 لطفاً لینک یا یوزرنیم کانال مبدا را ارسال کنید.
 
-<code>{e}</code>""",
-            parse_mode="HTML",
+مثال:
+@source_channel"""
         )
 
+    context.user_data["state"] = State.SOURCE_CHANNEL
 
-from telethon.errors import SessionPasswordNeededError
 
 # =========================
-# receive code
+# receive source channel
 # =========================
 
 
-async def receive_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def receive_source_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    if not context.user_data.get("waiting_code"):
+    if context.user_data.get("state") != State.SOURCE_CHANNEL:
         return
 
-    code = update.message.text.strip()
+    source_channel = update.message.text.strip()
 
-    client = context.user_data.get("client")
-    phone = context.user_data.get("phone")
+    context.user_data["source_channel"] = source_channel
 
-    try:
+    context.user_data["state"] = State.TARGET_CHANNEL
 
-        await client.sign_in(
-            phone=phone,
-            code=code,
-        )
+    await update.message.reply_text(f"""✅ کانال مبدا ثبت شد.
 
-        context.user_data["waiting_code"] = False
+📢 {source_channel}
 
-        await update.message.reply_text("""✅ اکانت با موفقیت متصل شد.
+حالا لینک یا یوزرنیم کانال مقصد را ارسال کنید.
 
-🎉 از این به بعد می‌توانید انتقال جدید ایجاد کنید.""")
+مثال:
+@target_channel""")
 
-        await client.disconnect()
 
-    except SessionPasswordNeededError:
+# =========================
+# receive target channel
+# =========================
 
-        context.user_data["waiting_password"] = True
-        context.user_data["waiting_code"] = False
 
-        await update.message.reply_text(
-            """🔐 این اکانت دارای رمز دوم (Two-Step Verification) است.
+async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-لطفاً رمز دوم را ارسال کنید."""
-        )
+    if context.user_data.get("state") != State.TARGET_CHANNEL:
+        return
 
-    except Exception as e:
+    target_channel = update.message.text.strip()
 
-        # لاگ کامل داخل Railway
-        print("========== LOGIN ERROR ==========")
-        print(type(e))
-        print(repr(e))
-        print("================================")
+    source_channel = context.user_data.get("source_channel")
+
+    if not source_channel:
+        context.user_data["state"] = State.NONE
 
         await update.message.reply_text(
-            f"""❌ ورود ناموفق شد.
-
-<code>{type(e).name}</code>
-
-<code>{repr(e)}</code>""",
-            parse_mode="HTML",
+            "❌ خطا: کانال مبدا پیدا نشد.\n\nدوباره از ابتدا شروع کنید."
         )
+        return
+
+    # ذخیره در دیتابیس
+    add_transfer(
+        update.effective_user.id,
+        source_channel,
+        target_channel,
+    )
+
+    # ذخیره موقت در حافظه (در صورت نیاز)
+    context.user_data["target_channel"] = target_channel
+
+    # پایان گفتگو
+    context.user_data["state"] = State.NONE
+
+    await update.message.reply_text(f"""✅ انتقال با موفقیت ثبت شد.
+
+📥 کانال مبدا:
+{source_channel}
+
+📤 کانال مقصد:
+{target_channel}
+
+🚀 از این به بعد هر پست جدیدی که در کانال مبدا منتشر شود،
+به صورت خودکار در کانال مقصد نیز ارسال خواهد شد.""")
