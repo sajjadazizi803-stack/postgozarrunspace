@@ -1,18 +1,31 @@
 from bot import create_bot
 from telegram_client import tg_client
-from listener import start_all_listeners
 
 import asyncio
 
 
 async def telethon_worker():
 
-    if not tg_client.is_connected():
-        await tg_client.connect()
+    try:
 
-    await start_all_listeners()
+        if not tg_client.is_connected():
+            await tg_client.connect()
 
-    await tg_client.run_until_disconnected()
+        from listener import start_all_listeners
+
+        await start_all_listeners()
+
+        print("✅ TELETHON LISTENERS STARTED")
+
+        await tg_client.run_until_disconnected()
+
+    except Exception as e:
+
+        print(
+            "❌ TELETHON WORKER ERROR:",
+            type(e).name,
+            str(e),
+        )
 
 
 async def startup(app):

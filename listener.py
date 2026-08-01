@@ -1,27 +1,34 @@
 from telethon import TelegramClient, events
-from telethon.tl.functions.messages import GetHistoryRequest
+from telethon.tl import functions, types
 
 import asyncio
+import os
 
-from database import get_all_transfers, increase_sent_count
+from database import (
+    get_all_transfers,
+    increase_sent_count,
+)
+
 from telegram_client import tg_client
 
-# =========================
-# Global
-# =========================
+# =========================================================
+# GLOBAL
+# =========================================================
 
 registered_listeners = set()
+
+event_handlers = {}
 
 polling_tasks = {}
 
 last_messages = {}
 
-event_handlers = {}
+channel_pts = {}
 
 
-# =========================
-# Transfer Message
-# =========================
+# =========================================================
+# TRANSFER MESSAGE
+# =========================================================
 
 
 async def transfer_message(
@@ -30,17 +37,20 @@ async def transfer_message(
     target_entity,
     transfer_id=None,
 ):
-    """
-    انتقال یک پیام از مبدا به مقصد
-    """
 
     try:
+
+        # -----------------------------------------
+        # MEDIA
+        # -----------------------------------------
 
         if message.media:
 
             file = await message.download_media()
 
             if not file:
+                print(f"❌ Could not download message " f"{message.id}")
+
                 return False
 
             try:
@@ -54,13 +64,16 @@ async def transfer_message(
             finally:
 
                 try:
-                    import os
 
                     if os.path.exists(file):
                         os.remove(file)
 
                 except Exception:
                     pass
+
+        # -----------------------------------------
+        # TEXT
+        # -----------------------------------------
 
         else:
 
@@ -74,135 +87,178 @@ async def transfer_message(
                 message=text,
             )
 
+        # -----------------------------------------
+        # DATABASE
+        # -----------------------------------------
+
         if transfer_id is not None:
 
             try:
+
                 increase_sent_count(transfer_id)
+
             except Exception as e:
-                print(f"COUNT ERROR: {e}")
+
+                print(f"❌ COUNT ERROR: {e}")
+
+        print(f"✅ FORWARDED: " f"{message.id}")
 
         return True
 
     except Exception as e:
 
-        print(f"TRANSFER ERROR: {e}")
+        print(f"❌ TRANSFER ERROR " f"{message.id}: " f"{type(e).name}: {e}")
 
         return False
 
 
-# =========================
-# Polling Worker
-# =========================
+# =========================================================
+# GET CHANNEL PTS
+# =========================================================
+
+
+async def get_channel_pts(
+    client: TelegramClient,
+    source_entity,
+):
+
+    try:
+
+        result = await client(
+            functions.channels.GetFullChannelRequest(channel=source_entity)
+        )
+
+        pts = result.full_chat.pts
+
+        print(f"📌 CHANNEL PTS " f"{source_entity.id}: {pts}")
+
+        return pts
+
+    except Exception as e:
+
+        print(f"❌ GET PTS ERROR " f"{source_entity.id}: " f"{type(e).name}: {e}")
+
+        return None
+
+
+# =========================================================
+# CHANNEL DIFFERENCE POLLING
+# =========================================================
 
 
 async def polling_worker(
     client: TelegramClient,
     source_entity,
     target_entity,
-    transfer_id,
+    transfer_id=None,
 ):
-    """
-    هر ۲ ثانیه تاریخچه کانال را مستقیماً از Telegram API بررسی می‌کند.
-
-    این Worker وابسته به باز شدن کانال در Telegram Client نیست.
-    """
 
     source_id = source_entity.id
+    target_id = target_entity.id
 
     transfer_key = (
         source_id,
-        target_entity.id,
+        target_id,
     )
 
-    print(f"🔄 Polling Started: " f"{source_entity.id} -> {target_entity.id}")
+    print(f"🔄 CHANNEL POLLING STARTED: " f"{source_id} -> {target_id}")
+
+    # =====================================================
+    # INITIAL PTS
+    # =====================================================
+
+    pts = await get_channel_pts(
+        client,
+        source_entity,
+    )
+
+    if pts is None:
+
+        print(f"❌ Could not initialize PTS " f"for {source_id}")
+
+        polling_tasks.pop(
+            transfer_key,
+            None,
+        )
+
+        return
+
+    channel_pts[transfer_key] = pts
+
+    # =====================================================
+    # LOOP
+    # =====================================================
 
     try:
-
-        # ---------------------------------
-        # تعیین آخرین پیام موجود در شروع
-        # ---------------------------------
-
-        if transfer_key not in last_messages:
-
-            try:
-
-                history = await client(
-                    GetHistoryRequest(
-                        peer=source_entity,
-                        offset_id=0,
-                        offset_date=None,
-                        add_offset=0,
-                        limit=1,
-                        max_id=0,
-                        min_id=0,
-                        hash=0,
-                    )
-                )
-
-                if history.messages:
-
-                    latest_message = history.messages[0]
-
-                    last_messages[transfer_key] = latest_message.id
-
-                    print(
-                        f"📌 Initial Message ID "
-                        f"{latest_message.id} "
-                        f"for {source_entity.id}"
-                    )
-
-                else:
-
-                    last_messages[transfer_key] = 0
-
-            except Exception as e:
-
-                print(f"INITIAL POLL ERROR " f"{source_entity.id}: {e}")
-
-                last_messages[transfer_key] = 0
-
-        # ---------------------------------
-        # Main Polling Loop
-        # ---------------------------------
 
         while True:
 
             try:
 
-                last_id = last_messages.get(
+                current_pts = channel_pts.get(
                     transfer_key,
-                    0,
+                    pts,
                 )
-                history = await client(
-                    GetHistoryRequest(
-                        peer=source_entity,
-                        offset_id=0,
-                        offset_date=None,
-                        add_offset=0,
+
+                result = await client(
+                    functions.updates.GetChannelDifferenceRequest(
+                        force=True,
+                        channel=source_entity,
+                        filter=types.ChannelMessagesFilterEmpty(),
+                        pts=current_pts,
                         limit=100,
-                        max_id=0,
-                        min_id=last_id,
-                        hash=0,
                     )
                 )
 
-                messages = history.messages
+                result_type = type(result).name
 
-                if messages:
+                # =================================================
+                # NO NEW UPDATE
+                # =================================================
 
-                    # قدیمی -> جدید
-                    messages = sorted(
-                        messages,
+                if result_type == "ChannelDifferenceEmpty":
+
+                    channel_pts[transfer_key] = result.pts
+
+                    pts = result.pts
+
+                    await asyncio.sleep(2)
+
+                    continue
+
+                # =================================================
+                # NEW UPDATES
+                # =================================================
+
+                if result_type == "ChannelDifference":
+
+                    new_messages = result.new_messages or []
+
+                    if new_messages:
+
+                        print(f"📨 NEW CHANNEL MESSAGES: " f"{len(new_messages)}")
+
+                    for message in sorted(
+                        new_messages,
                         key=lambda x: x.id,
-                    )
+                    ):
 
-                    for message in messages:
+                        last_id = last_messages.get(
+                            transfer_key,
+                            0,
+                        )
+
+                        # -----------------------------------------
+                        # DUPLICATE PROTECTION
+                        # -----------------------------------------
 
                         if message.id <= last_id:
                             continue
 
-                        # اول ID را ثبت می‌کنیم
-                        # تا Event دوباره آن را نفرستد
+                        # -----------------------------------------
+                        # REGISTER ID BEFORE SEND
+                        # -----------------------------------------
+
                         last_messages[transfer_key] = message.id
 
                         await transfer_message(
@@ -212,27 +268,81 @@ async def polling_worker(
                             transfer_id=transfer_id,
                         )
 
-                        last_id = message.id
+                    # -----------------------------------------
+                    # UPDATE PTS
+                    # -----------------------------------------
+
+                    channel_pts[transfer_key] = result.pts
+
+                    pts = result.pts
+
+                    # اگر هنوز ادامه دارد
+                    if not getattr(
+                        result,
+                        "final",
+                        True,
+                    ):
 
                         await asyncio.sleep(0.1)
 
-            except asyncio.CancelledError:
+                        continue
 
-                print(
-                    f"🛑 Polling Stopped: " f"{source_entity.id} -> {target_entity.id}"
-                )
+                    await asyncio.sleep(2)
 
-                raise
+                    continue
+
+                # =================================================
+                # TOO LONG
+                # =================================================
+
+                if result_type == "ChannelDifferenceTooLong":
+
+                    print(f"⚠️ CHANNEL DIFFERENCE " f"TOO LONG: " f"{source_id}")
+
+                    # -----------------------------------------
+                    # Reset PTS
+                    # -----------------------------------------
+
+                    new_pts = await get_channel_pts(
+                        client,
+                        source_entity,
+                    )
+
+                    if new_pts is not None:
+
+                        channel_pts[transfer_key] = new_pts
+
+                        pts = new_pts
+
+                    await asyncio.sleep(2)
+
+                    continue
+
+                # =================================================
+                # UNKNOWN RESPONSE
+                # =================================================
+
+                print(f"⚠️ UNKNOWN CHANNEL RESPONSE: " f"{result_type}")
+
+                await asyncio.sleep(2)
+
+            # =====================================================
+            # FLOOD WAIT
+            # =====================================================
 
             except Exception as e:
 
                 print(
-                    f"❌ POLLING ERROR "
-                    f"{source_entity.id} -> "
-                    f"{target_entity.id}: {e}"
+                    f"❌ CHANNEL POLLING ERROR " f"{source_id}: " f"{type(e).name}: {e}"
                 )
 
-            await asyncio.sleep(2)
+                await asyncio.sleep(3)
+
+    except asyncio.CancelledError:
+
+        print(f"🛑 CHANNEL POLLING STOPPED: " f"{source_id}")
+
+        raise
 
     finally:
 
@@ -242,9 +352,9 @@ async def polling_worker(
         )
 
 
-# =========================
-# Register Listener
-# =========================
+# =========================================================
+# REGISTER LISTENER
+# =========================================================
 
 
 async def register_listener(
@@ -259,17 +369,29 @@ async def register_listener(
         target_channel,
     )
 
+    # =====================================================
+    # DUPLICATE LISTENER
+    # =====================================================
+
     if key in registered_listeners:
 
-        print(f"⚠️ Already Registered: " f"{source_channel} -> {target_channel}")
+        print(f"⚠️ ALREADY REGISTERED: " f"{source_channel} -> " f"{target_channel}")
 
         return
+
+    # =====================================================
+    # GET ENTITIES
+    # =====================================================
 
     try:
 
         source_entity = await client.get_entity(source_channel)
 
         target_entity = await client.get_entity(target_channel)
+
+        source_input = await client.get_input_entity(source_entity)
+
+        target_input = await client.get_input_entity(target_entity)
 
         source_id = source_entity.id
         target_id = target_entity.id
@@ -281,23 +403,17 @@ async def register_listener(
 
     except Exception as e:
 
-        print(f"❌ REGISTER ERROR: {e}")
+        print(f"❌ ENTITY ERROR: " f"{type(e).name}: {e}")
 
         return
 
-    # =====================================
-    # Event Handler
-    # =====================================
+    # =====================================================
+    # EVENT
+    # =====================================================
 
     async def new_post(event):
 
         try:
-
-            if not event.chat:
-                return
-
-            if event.chat.id != source_id:
-                return
 
             message = event.message
 
@@ -306,50 +422,57 @@ async def register_listener(
 
             message_id = message.id
 
-            current_last_id = last_messages.get(
+            # -----------------------------------------
+            # DUPLICATE CHECK
+            # -----------------------------------------
+
+            last_id = last_messages.get(
                 transfer_key,
                 0,
             )
 
-            # اگر قبلاً Polling این پیام را دیده
-            # دوباره ارسال نکن
-            if message_id <= current_last_id:
+            if message_id <= last_id:
                 return
 
-            # ID را قبل از ارسال ثبت کن
+            # -----------------------------------------
+            # SAVE ID
+            # -----------------------------------------
+
             last_messages[transfer_key] = message_id
+
+            print(f"📩 EVENT MESSAGE: " f"{message_id}")
 
             await transfer_message(
                 client=client,
                 message=message,
-                target_entity=target_entity,
+                target_entity=target_input,
                 transfer_id=transfer_id,
             )
 
         except Exception as e:
 
-            print(f"❌ EVENT ERROR: {e}")
+            print(f"❌ EVENT ERROR: " f"{type(e).name}: {e}")
 
-    # =====================================
-    # ثبت Event Handler فقط یک بار
-    # =====================================
+    # =====================================================
+    # REGISTER EVENT WITH CHAT FILTER
+    # =====================================================
 
     client.add_event_handler(
         new_post,
-        events.NewMessage(chats=source_entity),
+        events.NewMessage(chats=source_input),
     )
 
     event_handlers[transfer_key] = new_post
 
-    # =====================================
-    # ثبت Listener
-    # =====================================
+    # =====================================================
+    # REGISTER LISTENER
+    # =====================================================
 
     registered_listeners.add(key)
 
-    # =====================================
-    # فقط یک Polling برای هر اتصال
-    # =====================================
+    # =====================================================
+    # START ONLY ONE POLLER
+    # =====================================================
 
     if transfer_key not in polling_tasks:
 
@@ -357,19 +480,19 @@ async def register_listener(
             polling_worker(
                 client=client,
                 source_entity=source_entity,
-                target_entity=target_entity,
+                target_entity=target_input,
                 transfer_id=transfer_id,
             )
         )
 
         polling_tasks[transfer_key] = task
 
-    print(f"✅ Listener Registered: " f"{source_channel} -> {target_channel}")
+    print(f"✅ LISTENER REGISTERED: " f"{source_channel} -> " f"{target_channel}")
 
 
-# =========================
-# Start All Listeners
-# =========================
+# =========================================================
+# START ALL LISTENERS
+# =========================================================
 
 
 async def start_all_listeners():
@@ -380,16 +503,34 @@ async def start_all_listeners():
 
     transfers = get_all_transfers()
 
+    print(f"📋 TRANSFERS FOUND: " f"{len(transfers)}")
+
     for transfer in transfers:
 
+        # IMPORTANT:
+        #
+        # database returns:
+        #
+        # id,
+        # telegram_id,
+        # source_channel,
+        # target_channel,
+        # enabled
+
         transfer_id = transfer[0]
+
         telegram_id = transfer[1]
+
         source = transfer[2]
+
         target = transfer[3]
+
         enabled = transfer[4]
 
         if enabled != 1:
             continue
+
+        print(f"🔗 STARTING: " f"{source} -> {target}")
 
         try:
 
@@ -402,12 +543,16 @@ async def start_all_listeners():
 
         except Exception as e:
 
-            print(f"❌ START LISTENER ERROR " f"{source} -> {target}: {e}")
+            print(
+                f"❌ START LISTENER ERROR: "
+                f"{source} -> {target}: "
+                f"{type(e).name}: {e}"
+            )
 
 
-# =========================
-# Add New Transfer
-# =========================
+# =========================================================
+# ADD NEW TRANSFER
+# =========================================================
 
 
 async def add_new_transfer(
@@ -415,13 +560,14 @@ async def add_new_transfer(
     source_channel,
     target_channel,
 ):
-    """
-    فعال کردن انتقال جدید بدون Restart
-    """
-
-    transfers = get_all_transfers()
 
     transfer_id = None
+
+    # -----------------------------------------------------
+    # پیدا کردن ID انتقال تازه ثبت شده
+    # -----------------------------------------------------
+
+    transfers = get_all_transfers()
 
     for transfer in transfers:
 
@@ -429,10 +575,16 @@ async def add_new_transfer(
             transfer[1] == telegram_id
             and transfer[2] == source_channel
             and transfer[3] == target_channel
+            and transfer[4] == 1
         ):
 
             transfer_id = transfer[0]
+
             break
+
+    # -----------------------------------------------------
+    # Register
+    # -----------------------------------------------------
 
     await register_listener(
         client=tg_client,
