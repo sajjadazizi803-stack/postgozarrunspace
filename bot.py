@@ -153,11 +153,26 @@ def create_bot():
 
     # اجرا هنگام بالا آمدن ربات
     async def startup(app):
-        await tg_client.start()
 
-        from listener import start_all_listeners
+        print("========== STARTUP ==========")
 
-        await start_all_listeners()
+        try:
+            await tg_client.start()
+            print("✅ tg_client started")
+        except Exception as e:
+            print("❌ tg_client start error:", e)
+
+        try:
+            from listener import start_all_listeners
+
+            print("➡️ calling start_all_listeners()")
+
+            await start_all_listeners()
+
+            print("✅ start_all_listeners finished")
+
+        except Exception as e:
+            print("❌ start_all_listeners error:", e)
 
     app.post_init = startup
 

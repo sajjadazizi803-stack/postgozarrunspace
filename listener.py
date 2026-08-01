@@ -85,9 +85,15 @@ async def register_listener(
 
 async def start_all_listeners():
 
+    print("========== start_all_listeners ==========")
+
     transfers = get_all_transfers()
 
+    print("Transfers:", transfers)
+
     for transfer in transfers:
+
+        print("Transfer Row:", transfer)
 
         telegram_id = transfer[0]
         source = transfer[1]
