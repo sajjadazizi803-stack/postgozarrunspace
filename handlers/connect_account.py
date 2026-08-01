@@ -256,7 +256,7 @@ async def back_to_registered_channels(
                 )
             ]
         )
-
+    # -
     await query.edit_message_text(
         """<b>📋 کانال‌های ثبت‌شده شما</b>
 
