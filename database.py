@@ -1,36 +1,36 @@
 import sqlite3
+import os
 
-db = sqlite3.connect(
-    "database.db",
-    check_same_thread=False,
-)
+# =========================
+# تعیین مسیر دیتابیس به صورت مطلق و ایمن
+# =========================
 
+BASE_DIR = os.getcwd()
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+
+db = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = db.cursor()
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users(
+cursor.execute("""CREATE TABLE IF NOT EXISTS users(
     telegram_id INTEGER PRIMARY KEY,
     phone TEXT,
     api_id INTEGER,
     api_hash TEXT,
     session_name TEXT
-)
-""")
+)""")
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS transfers(
+cursor.execute("""CREATE TABLE IF NOT EXISTS transfers(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     telegram_id INTEGER,
     source_channel TEXT,
     target_channel TEXT,
     enabled INTEGER DEFAULT 1
-)
-""")
+)""")
 
 db.commit()
 
 
-# ---------- انتقال ها ----------
+# ---------- توابع انتقال ----------
 
 
 def add_transfer(telegram_id, source_channel, target_channel):
@@ -40,11 +40,7 @@ def add_transfer(telegram_id, source_channel, target_channel):
         (telegram_id, source_channel, target_channel)
         VALUES (?, ?, ?)
         """,
-        (
-            telegram_id,
-            source_channel,
-            target_channel,
-        ),
+        (telegram_id, source_channel, target_channel),
     )
     db.commit()
 
@@ -90,9 +86,6 @@ def set_transfer_enabled(transfer_id, enabled):
         SET enabled=?
         WHERE id=?
         """,
-        (
-            enabled,
-            transfer_id,
-        ),
+        (enabled, transfer_id),
     )
     db.commit()
