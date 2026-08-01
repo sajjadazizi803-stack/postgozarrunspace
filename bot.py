@@ -143,4 +143,16 @@ def create_bot():
 
     app.bot_data["tg_client"] = tg_client
 
+    app.bot_data["tg_client"] = tg_client
+
+
+# -------------------- startup --------------------
+
+
+async def startup(app):
+    await tg_client.start()
+
+    from listener import start_all_listeners
+
+    await start_all_listeners(app)
     return app
