@@ -119,11 +119,8 @@ async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_text(
         f"""✅ انتقال با موفقیت ثبت و فعال شد.
 
-📥 کانال مبدا:
-{source_channel}
-
-📤 کانال مقصد:
-{target_channel}
+📥 کانال مبدا: {source_channel}
+📤 کانال مقصد: {target_channel}
 
 🚀 از این به بعد هر پست جدیدی که در کانال مبدا منتشر شود، به صورت خودکار در کانال مقصد نیز ارسال خواهد شد."""
     )
@@ -159,7 +156,13 @@ async def registered_channels(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
 
     await update.message.reply_text(
-        "📋 کانال‌های ثبت شده شما:", reply_markup=InlineKeyboardMarkup(keyboard)
+        """<b>📋 کانال‌های ثبت‌شده شما</b>
+
+🎯 تمام اتصال‌های فعال شما در این بخش نمایش داده می‌شوند.
+
+👇 برای مشاهده اطلاعات هر اتصال، کافی است روی دکمه <b>کانال مبدا ➜ مقصد</b> موردنظر بزنید.""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
     )
 
 
@@ -255,7 +258,13 @@ async def back_to_registered_channels(
         )
 
     await query.edit_message_text(
-        "📋 کانال‌های ثبت شده شما:", reply_markup=InlineKeyboardMarkup(keyboard)
+        """<b>📋 کانال‌های ثبت‌شده شما</b>
+
+🎯 تمام اتصال‌های فعال شما در این بخش نمایش داده می‌شوند.
+
+👇 برای مشاهده اطلاعات هر اتصال، کافی است روی دکمه <b>کانال مبدا ➜ مقصد</b> موردنظر بزنید.""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
     )
 
 
