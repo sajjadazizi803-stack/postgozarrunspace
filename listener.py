@@ -28,7 +28,6 @@ async def register_listener(
     )
 
     if key in registered_listeners:
-        print(f"⚠️ Listener already exists: {source_channel}")
         return
 
     try:
@@ -36,9 +35,7 @@ async def register_listener(
         source_entity = await client.get_input_entity(source_channel)
         target_entity = await client.get_input_entity(target_channel)
 
-    except Exception as e:
-
-        print(f"❌ Entity Error: {e}")
+    except Exception:
         return
 
     @client.on(events.NewMessage(chats=source_entity))
@@ -65,15 +62,10 @@ async def register_listener(
                     message=message.text or "",
                 )
 
-            print(f"✅ Forwarded: {source_channel} -> {target_channel}")
-
-        except Exception as e:
-
-            print(f"❌ Forward Error: {e}")
+        except Exception:
+            pass
 
     registered_listeners.add(key)
-
-    print(f"✅ Listener Registered: {source_channel}")
 
 
 # =========================
@@ -86,15 +78,9 @@ async def start_all_listeners():
     if not tg_client.is_connected():
         await tg_client.connect()
 
-    print("========== start_all_listeners ==========")
-
     transfers = get_all_transfers()
 
-    print("Transfers:", transfers)
-
     for transfer in transfers:
-
-        print("Transfer Row:", transfer)
 
         telegram_id = transfer[0]
         source = transfer[1]
@@ -112,8 +98,6 @@ async def start_all_listeners():
             target,
         )
 
-    print("✅ All Listeners Started.")
-
 
 # ----------------- add new transfer -----------------
 
@@ -123,11 +107,8 @@ async def add_new_transfer(telegram_id, source_channel, target_channel):
 
     client = tg_client
 
-    # ثبت لیسنر جدید
     await register_listener(
         client,
         source_channel,
         target_channel,
     )
-
-    print(f"✅ New listener added: {source_channel} -> {target_channel}")

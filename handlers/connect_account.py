@@ -69,47 +69,61 @@ async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_T
 
     if not source_channel:
         context.user_data["state"] = State.NONE
+
         await update.message.reply_text(
             "❌ خطا: کانال مبدا پیدا نشد.\n\nدوباره از ابتدا شروع کنید."
         )
+
         return
 
     telegram_id = update.effective_user.id
 
     # ذخیره در دیتابیس
     try:
+
         add_transfer(
             telegram_id,
             source_channel,
             target_channel,
         )
-        print(f"✅ Transfer saved in DB: {source_channel} -> {target_channel}")
+
     except Exception as e:
-        print(f"❌ Database error: {e}")
-        await update.message.reply_text(f"❌ خطا در ذخیره‌سازی: {e}")
+
+        await update.message.reply_text(
+            f"❌ خطا در ذخیره‌سازی:\n\n<code>{e}</code>",
+            parse_mode="HTML",
+        )
+
         return
 
-    # فعال کردن لیسنر جدید (بدون ری‌استارت)
+    # فعال کردن لیسنر جدید
     try:
+
         await add_new_transfer(
             telegram_id,
             source_channel,
             target_channel,
         )
-        print(f"✅ Listener activated: {source_channel} -> {target_channel}")
+
     except Exception as e:
-        print(f"❌ Listener error: {e}")
-        await update.message.reply_text(f"❌ خطا در فعال‌سازی لیسنر: {e}")
+
+        await update.message.reply_text(
+            f"❌ خطا در فعال‌سازی انتقال:\n\n<code>{e}</code>",
+            parse_mode="HTML",
+        )
+
         return
 
-    # پایان گفتگو
     context.user_data["state"] = State.NONE
 
     await update.message.reply_text(
         f"""✅ انتقال با موفقیت ثبت و فعال شد.
 
-📥 کانال مبدا: {source_channel}
-📤 کانال مقصد: {target_channel}
+📥 کانال مبدا:
+{source_channel}
+
+📤 کانال مقصد:
+{target_channel}
 
 🚀 از این به بعد هر پست جدیدی که در کانال مبدا منتشر شود، به صورت خودکار در کانال مقصد نیز ارسال خواهد شد."""
     )

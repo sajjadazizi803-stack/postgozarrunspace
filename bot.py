@@ -41,6 +41,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = ReplyKeyboardMarkup(
         [
             ["📢 افزودن کانال"],
+            ["📋 کانال‌های ثبت شده"],
         ],
         resize_keyboard=True,
     )
@@ -190,26 +191,18 @@ def create_bot():
     # اجرا هنگام بالا آمدن ربات
     async def startup(app):
 
-        print("========== STARTUP ==========")
-
         try:
-
             await tg_client.start()
-            print("✅ tg_client started")
-        except Exception as e:
-            print("❌ tg_client start error:", e)
+        except Exception:
+            pass
 
         try:
             from listener import start_all_listeners
 
-            print("➡️ calling start_all_listeners()")
-
             await start_all_listeners()
 
-            print("✅ start_all_listeners finished")
-
-        except Exception as e:
-            print("❌ start_all_listeners error:", e)
+        except Exception:
+            pass
 
     app.post_init = startup
 

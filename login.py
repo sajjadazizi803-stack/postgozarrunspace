@@ -8,8 +8,4 @@ client = TelegramClient(StringSession(), api_id, api_hash)
 
 client.start(phone=lambda: input("Phone: "))
 
-print("\n\n========== STRING SESSION ==========\n")
-print(client.session.save())
-print("\n====================================\n")
-
 client.disconnect()
