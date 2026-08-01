@@ -175,7 +175,6 @@ def create_bot():
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             text_buttons,
-            block=False,
         )
     )
 
