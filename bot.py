@@ -134,6 +134,7 @@ def create_bot():
             text_buttons,
         )
     )
+
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -141,18 +142,17 @@ def create_bot():
         )
     )
 
+    # تلگرام کلاینت
     app.bot_data["tg_client"] = tg_client
 
-    app.bot_data["tg_client"] = tg_client
+    # اجرا هنگام بالا آمدن ربات
+    async def startup(app):
+        await tg_client.start()
 
+        from listener import start_all_listeners
 
-# -------------------- startup --------------------
+        await start_all_listeners(app)
 
+    app.post_init = startup
 
-async def startup(app):
-    await tg_client.start()
-
-    from listener import start_all_listeners
-
-    await start_all_listeners(app)
     return app
