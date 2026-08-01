@@ -82,10 +82,18 @@ from conversation import State
 
 async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    # اگر داخل یکی از مراحل گفتگو هستیم، دکمه‌های اصلی کار نکنند
-    if context.user_data.get("state", State.NONE) != State.NONE:
+    state = context.user_data.get("state", State.NONE)
+
+    # مراحل گفتگو
+    if state == State.SOURCE_CHANNEL:
+        await receive_source_channel(update, context)
         return
 
+    if state == State.TARGET_CHANNEL:
+        await receive_target_channel(update, context)
+        return
+
+    # دکمه‌های اصلی
     text = update.message.text
 
     if text == "📢 افزودن کانال":
@@ -178,17 +186,8 @@ def create_bot():
         )
     )
 
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            conversation_router,
-        )
-    )
-
-    # تلگرام کلاینت
     app.bot_data["tg_client"] = tg_client
 
-    # اجرا هنگام بالا آمدن ربات
     async def startup(app):
 
         try:
