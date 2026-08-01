@@ -6,7 +6,7 @@ import os
 # =========================
 
 # برای اینکه دیگه هیچ خطای "file not defined" نگیری
-DB_PATH = "/tmp/database.db"
+DB_PATH = "database.db"
 
 db = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = db.cursor()
@@ -86,3 +86,22 @@ def set_transfer_enabled(transfer_id, enabled):
         (enabled, transfer_id),
     )
     db.commit()
+
+
+# -------------------- get user -----------------------
+
+
+def get_user(telegram_id):
+    cursor.execute(
+        """
+        SELECT telegram_id,
+               phone,
+               api_id,
+               api_hash,
+               session_name
+        FROM users
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    )
+    return cursor.fetchone()

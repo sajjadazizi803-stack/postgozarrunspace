@@ -23,11 +23,20 @@ from handlers.connect_account import (
 import config
 from telethon import TelegramClient
 from telethon.sessions import StringSession
+import os  # <-- این خط رو اضافه کن
 
-SESSION_STRING = "1BJWap1sBuzbjNHncWlW77EdDY1JdAhPSr93nLn23ScoZKj0WOnnWMpxS9mDBa8j1nDqCwHB5rWmFs_xnFKK1yJi45KYwJ3yUvwzR-xD57xTTG7qAX_wX815v2NkbHBYCVuUPksABVNz_BnFVraDTIGccdpXPRH-Tu_4fNpiYl35BTPXHVz9kWVTKfx7lAbno9azPzlexY3aj53QmX1HCylnO6kMDe0AyvXvIUNQx2AO6Czxygf5QzEeJls5wWPmAxXhnK9P6Lo3w__A9fwLaw37ThxoWQ5c81Cx_erJApItI6RG1GCLoIJ4s7uSn_bvmPStziHrI-kwV_srjOJrfkvROYuq5Az4="
+# =========================
+# استفاده از فایل سشن به جای StringSession
+# =========================
+
+# مسیر ذخیره سشن در پوشه موقت (برای سرور)
+SESSION_PATH = "/tmp/sessions/my_account.session"
+
+# ساخت پوشه اگر وجود نداشت
+os.makedirs("/tmp/sessions/", exist_ok=True)
 
 tg_client = TelegramClient(
-    StringSession(SESSION_STRING),
+    SESSION_PATH,  # <-- به جای StringSession از فایل استفاده کن
     config.API_ID,
     config.API_HASH,
 )
@@ -157,6 +166,7 @@ def create_bot():
         print("========== STARTUP ==========")
 
         try:
+
             await tg_client.start()
             print("✅ tg_client started")
         except Exception as e:

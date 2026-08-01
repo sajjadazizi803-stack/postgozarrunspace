@@ -2,12 +2,12 @@ from telethon import TelegramClient, events
 import os
 import config
 from database import get_all_transfers
+from bot import tg_client
 
 # =========================
 # Global
 # =========================
 
-clients = {}
 registered_listeners = set()
 os.makedirs("/tmp/sessions/", exist_ok=True)
 
@@ -102,26 +102,7 @@ async def start_all_listeners():
         if enabled != 1:
             continue
 
-        session_name = f"/tmp/sessions/{telegram_id}"
-
-        if telegram_id not in clients:
-
-            try:
-                client = TelegramClient(
-                    session_name,
-                    config.API_ID,
-                    config.API_HASH,
-                )
-
-                await client.start()
-
-                clients[telegram_id] = client
-
-            except Exception as e:
-                print(f"❌ Client start error for {telegram_id}: {e}")
-                continue  # <-- این خط اضافه شده
-
-        client = clients[telegram_id]
+        client = tg_client
 
         await register_listener(
             client,
@@ -138,19 +119,7 @@ async def start_all_listeners():
 async def add_new_transfer(telegram_id, source_channel, target_channel):
     """ثبت لیسنر برای انتقال جدید بدون نیاز به ری‌استارت"""
 
-    session_name = f"/tmp/sessions/{telegram_id}"
-
-    # اگر کلاینت وجود نداشت، ایجاد کن
-    if telegram_id not in clients:
-        client = TelegramClient(
-            session_name,
-            config.API_ID,
-            config.API_HASH,
-        )
-        await client.start()
-        clients[telegram_id] = client
-
-    client = clients[telegram_id]
+    client = tg_client
 
     # ثبت لیسنر جدید
     await register_listener(
