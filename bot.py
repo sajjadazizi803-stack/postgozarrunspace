@@ -173,8 +173,9 @@ def create_bot():
 
     app.add_handler(
         MessageHandler(
-            filters.Regex("^📢 افزودن کانال$"),
+            filters.TEXT & ~filters.COMMAND,
             text_buttons,
+            block=False,
         )
     )
 
