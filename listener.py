@@ -1,7 +1,6 @@
 from telethon import TelegramClient, events
-
+import os
 import config
-
 from database import get_all_transfers
 
 # =========================
@@ -10,7 +9,7 @@ from database import get_all_transfers
 
 clients = {}
 registered_listeners = set()
-
+os.makedirs("/tmp/sessions/", exist_ok=True)
 
 # =========================
 # Register One Listener
@@ -103,7 +102,7 @@ async def start_all_listeners():
         if enabled != 1:
             continue
 
-        session_name = f"sessions/{telegram_id}"
+        session_name = f"/tmp/sessions/{telegram_id}"
 
         if telegram_id not in clients:
 
@@ -139,7 +138,7 @@ async def start_all_listeners():
 async def add_new_transfer(telegram_id, source_channel, target_channel):
     """ثبت لیسنر برای انتقال جدید بدون نیاز به ری‌استارت"""
 
-    session_name = f"sessions/{telegram_id}"
+    session_name = f"/tmp/sessions/{telegram_id}"
 
     # اگر کلاینت وجود نداشت، ایجاد کن
     if telegram_id not in clients:
