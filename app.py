@@ -12,8 +12,6 @@ async def telethon_worker():
 
     await start_all_listeners()
 
-    print("✅ Telethon Started")
-
     await tg_client.run_until_disconnected()
 
 
