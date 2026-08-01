@@ -2,11 +2,11 @@ import sqlite3
 import os
 
 # =========================
-# تعیین مسیر دیتابیس به صورت مطلق و ایمن
+# مسیر دیتابیس در پوشه موقت (برای سرور)
 # =========================
 
-BASE_DIR = os.getcwd()
-DB_PATH = os.path.join(BASE_DIR, "database.db")
+# برای اینکه دیگه هیچ خطای "file not defined" نگیری
+DB_PATH = "/tmp/database.db"
 
 db = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = db.cursor()
@@ -28,9 +28,6 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS transfers(
 )""")
 
 db.commit()
-
-
-# ---------- توابع انتقال ----------
 
 
 def add_transfer(telegram_id, source_channel, target_channel):
