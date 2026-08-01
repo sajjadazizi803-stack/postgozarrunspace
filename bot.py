@@ -151,7 +151,7 @@ def create_bot():
 
         from listener import start_all_listeners
 
-        await start_all_listeners(app)
+        await start_all_listeners()
 
     app.post_init = startup
 
