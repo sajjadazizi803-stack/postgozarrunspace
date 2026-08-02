@@ -521,67 +521,6 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except UserNotParticipantError:
 
         await query.edit_message_text("❌ اکانت داخل کانال مبدا عضو نیست.")
-
-        return
-
-    except Exception:
-        pass
-
-    # ----------------------------------
-    # بررسی عضویت اکانت در مقصد
-    # ----------------------------------
-
-    try:
-
-        await tg_client(
-            GetParticipantRequest(
-                target_channel,
-                "me",
-            )
-        )
-
-    except UserNotParticipantError:
-
-        await query.edit_message_text("❌ اکانت داخل کانال مقصد عضو نیست.")
-
-        return
-
-    except Exception:
-        pass
-
-    # ----------------------------------
-    # بررسی وجود ربات در مقصد
-    # ----------------------------------
-
-    async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-        query = update.callback_query
-        await query.answer()
-
-    source_channel = context.user_data.get("pending_source")
-    target_channel = context.user_data.get("pending_target")
-
-    if not source_channel or not target_channel:
-
-        await query.edit_message_text("❌ اطلاعات انتقال پیدا نشد.")
-        return
-
-    # ----------------------------------
-    # بررسی عضویت اکانت در مبدا
-    # ----------------------------------
-
-    try:
-
-        await tg_client(
-            GetParticipantRequest(
-                source_channel,
-                "me",
-            )
-        )
-
-    except UserNotParticipantError:
-
-        await query.edit_message_text("❌ اکانت داخل کانال مبدا عضو نیست.")
         return
 
     except Exception:
@@ -624,7 +563,6 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
 
         await query.edit_message_text(f"ERROR:\n{e}")
-
         return
 
     # ----------------------------------
@@ -637,7 +575,6 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ):
 
         await query.edit_message_text("❌ ربات ادمین کانال مقصد نیست.")
-
         return
 
     # ----------------------------------
