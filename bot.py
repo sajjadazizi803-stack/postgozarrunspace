@@ -18,6 +18,7 @@ from handlers.connect_account import (
     connect_account,
     receive_source_channel,
     receive_target_channel,
+    finish_transfer,
 )
 
 from handlers.connect_account import (
@@ -554,6 +555,13 @@ def create_bot():
         CallbackQueryHandler(
             append_lines_setting,
             pattern=r"^append_lines_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            finish_transfer,
+            pattern="^finish_transfer$",
         )
     )
 

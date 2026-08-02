@@ -1,6 +1,6 @@
 from bot import create_bot
 from telegram_client import tg_client
-
+from handlers.connect_account import finish_transfer
 import asyncio
 
 

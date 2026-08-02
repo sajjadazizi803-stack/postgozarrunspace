@@ -6,6 +6,14 @@ from listener import add_new_transfer
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import jdatetime
 from datetime import datetime
+from telegram_client import tg_client
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.errors import UserAlreadyParticipantError
+from bot import tg_client
+from telegram import ChatMemberAdministrator
+from telethon.tl.functions.channels import GetParticipantRequest
+from telethon.errors import UserNotParticipantError
 
 from database import (
     delete_transfer,
@@ -49,14 +57,27 @@ async def receive_source_channel(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     source_channel = update.message.text.strip()
+
+    try:
+
+        try:
+            await tg_client(JoinChannelRequest(source_channel))
+        except UserAlreadyParticipantError:
+            pass
+
+    except Exception:
+
+        await update.message.reply_text("❌ عضویت در کانال مبدا انجام نشد.")
+        return
+
     context.user_data["source_channel"] = source_channel
     context.user_data["state"] = State.TARGET_CHANNEL
 
-    await update.message.reply_text(f"""✅ کانال مبدا ثبت شد.
-📢 {source_channel}
+    await update.message.reply_text(f"""✅ اکانت عضو کانال مبدا شد.
 
-حالا لینک یا یوزرنیم کانال مقصد را ارسال کنید.
-مثال: @target_channel""")
+📥 {source_channel}
+
+حالا آیدی کانال مقصد را ارسال کنید.""")
 
 
 # =========================
@@ -70,64 +91,55 @@ async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     target_channel = update.message.text.strip()
+
     source_channel = context.user_data.get("source_channel")
 
     if not source_channel:
+
         context.user_data["state"] = State.NONE
 
-        await update.message.reply_text(
-            "❌ خطا: کانال مبدا پیدا نشد.\n\nدوباره از ابتدا شروع کنید."
-        )
+        await update.message.reply_text("❌ کانال مبدا پیدا نشد.")
 
         return
 
-    telegram_id = update.effective_user.id
-
-    # ذخیره در دیتابیس
     try:
 
-        add_transfer(
-            telegram_id,
-            source_channel,
-            target_channel,
-        )
+        await tg_client(JoinChannelRequest(target_channel))
 
-    except Exception as e:
+    except:
+        pass
 
-        await update.message.reply_text(
-            f"❌ خطا در ذخیره‌سازی:\n\n<code>{e}</code>",
-            parse_mode="HTML",
-        )
+    context.user_data["pending_source"] = source_channel
+    context.user_data["pending_target"] = target_channel
 
-        return
-
-    # فعال کردن لیسنر جدید
-    try:
-
-        await add_new_transfer(
-            telegram_id,
-            source_channel,
-            target_channel,
-        )
-
-    except Exception as e:
-
-        await update.message.reply_text(
-            f"❌ خطا در فعال‌سازی انتقال:\n\n<code>{e}</code>",
-            parse_mode="HTML",
-        )
-
-        return
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "✅ انجام شد",
+                callback_data="finish_transfer",
+            )
+        ]
+    ]
 
     context.user_data["state"] = State.NONE
 
     await update.message.reply_text(
-        f"""✅ انتقال با موفقیت ثبت و فعال شد.
+        f"""✅ اکانت عضو کانال مقصد شد.
 
-📥 کانال مبدا: {source_channel}
-📤 کانال مقصد: {target_channel}
+📥 مبدا:
+{source_channel}
 
-🚀 از این به بعد هر پست جدیدی که در کانال مبدا منتشر شود، به صورت خودکار در کانال مقصد نیز ارسال خواهد شد."""
+📤 مقصد:
+{target_channel}
+
+اکنون:
+
+1- ربات را ادمین کانال مقصد کنید.
+
+2- اکانت را نیز ادمین کنید.
+
+سپس روی دکمه زیر بزنید.""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
@@ -366,7 +378,7 @@ async def toggle_transfer_callback(update: Update, context: ContextTypes.DEFAULT
                 callback_data=f"toggle_{transfer_id}",
             ),
             InlineKeyboardButton(
-                "🗑 حذف انتقال",
+                "🗑 حذف",
                 callback_data=f"delete_{transfer_id}",
             ),
         ],
@@ -477,3 +489,120 @@ async def append_lines_setting(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.edit_message_text("""➕ افزودن خطوط آخر
 
 متنی که می‌خواهید به آخر پست اضافه شود را ارسال کنید.""")
+
+
+# -------------------- finish transfer --------------------
+
+
+async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    source_channel = context.user_data.get("pending_source")
+    target_channel = context.user_data.get("pending_target")
+
+    if not source_channel or not target_channel:
+
+        await query.edit_message_text("❌ اطلاعات انتقال پیدا نشد.")
+        return
+
+    # ----------------------------------
+    # بررسی عضویت اکانت در مبدا
+    # ----------------------------------
+
+    try:
+
+        await tg_client(
+            GetParticipantRequest(
+                source_channel,
+                "me",
+            )
+        )
+
+    except UserNotParticipantError:
+
+        await query.edit_message_text("❌ اکانت داخل کانال مبدا عضو نیست.")
+
+        return
+
+    except Exception:
+        pass
+
+    # ----------------------------------
+    # بررسی عضویت اکانت در مقصد
+    # ----------------------------------
+
+    try:
+
+        await tg_client(
+            GetParticipantRequest(
+                target_channel,
+                "me",
+            )
+        )
+
+    except UserNotParticipantError:
+
+        await query.edit_message_text("❌ اکانت داخل کانال مقصد عضو نیست.")
+
+        return
+
+    except Exception:
+        pass
+
+    # ----------------------------------
+    # بررسی وجود ربات در مقصد
+    # ----------------------------------
+
+    try:
+
+        bot_member = await context.bot.get_chat_member(
+            target_channel,
+            context.bot.id,
+        )
+
+    except Exception:
+
+        await query.edit_message_text(
+            "❌ ربات داخل کانال مقصد نیست.\n\n"
+            "ابتدا ربات را به کانال اضافه و ادمین کنید."
+        )
+
+        return
+
+    # ----------------------------------
+    # بررسی ادمین بودن ربات
+    # ----------------------------------
+
+    if bot_member.status not in (
+        "administrator",
+        "creator",
+    ):
+
+        await query.edit_message_text(
+            "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
+            "ابتدا ربات را ادمین کنید سپس دوباره روی «✅ انجام شد» بزنید."
+        )
+
+        return
+
+    # ----------------------------------
+    # ثبت انتقال
+    # ----------------------------------
+
+    add_transfer(
+        query.from_user.id,
+        source_channel,
+        target_channel,
+    )
+
+    context.user_data.pop("pending_source", None)
+    context.user_data.pop("pending_target", None)
+
+    await query.edit_message_text(f"""✅ انتقال با موفقیت ثبت شد.
+
+📥 مبدا: {source_channel}
+📤 مقصد: {target_channel}
+
+🚀 انتقال خودکار از این لحظه فعال شد.""")
