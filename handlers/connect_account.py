@@ -12,6 +12,8 @@ from database import (
     set_transfer_enabled,
     get_user_transfers,
     get_remove_last_lines,
+    set_append_last_lines,
+    get_append_last_lines,
 )
 
 # =========================
@@ -412,6 +414,12 @@ async def transfer_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [
             InlineKeyboardButton(
+                "➕ افزودن خطوط آخر",
+                callback_data=f"append_lines_{transfer_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 بازگشت",
                 callback_data=f"transfer_{transfer_id}",
             )
@@ -421,7 +429,7 @@ async def transfer_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(
         """⚙️ تنظیمات انتقال
 
-تنظیماتی که می‌خواهید ربات روی هر پست اعمال کند و سپس ارسال کند را از دکمه‌های زیر انتخاب کنید.""",
+تنظیماتی که می‌خواهید ربات روی هر پست اعمال کند را انتخاب کنید.""",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -446,3 +454,22 @@ async def remove_lines_setting(update: Update, context: ContextTypes.DEFAULT_TYP
 
 مثال:
 8""")
+
+
+# -------------------- append lines setting --------------------
+
+
+async def append_lines_setting(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    context.user_data["append_lines_transfer_id"] = transfer_id
+
+    context.user_data["state"] = State.APPEND_LAST_LINES
+
+    await query.edit_message_text("""➕ افزودن خطوط آخر
+
+متنی که می‌خواهید به آخر پست اضافه شود را ارسال کنید.""")

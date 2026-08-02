@@ -8,6 +8,7 @@ from database import (
     get_all_transfers,
     increase_sent_count,
     get_remove_last_lines,
+    get_append_last_lines,
 )
 
 from telegram_client import tg_client
@@ -26,6 +27,7 @@ last_messages = {}
 
 channel_pts = {}
 
+
 # ------------------- remove last lines --------------------
 
 
@@ -40,6 +42,20 @@ def remove_last_lines(text, count):
         return ""
 
     return "\n".join(lines[:-count])
+
+
+# ------------------- append last lines --------------------
+
+
+def append_last_lines(text, append_text):
+
+    if not append_text:
+        return text
+
+    if not text:
+        return append_text
+
+    return text + "\n\n" + append_text
 
 
 # =========================================================
@@ -57,12 +73,19 @@ async def transfer_message(
     try:
 
         remove_count = 0
+        append_text = ""
 
         if transfer_id is not None:
+
             try:
                 remove_count = get_remove_last_lines(transfer_id)
             except Exception:
                 remove_count = 0
+
+            try:
+                append_text = get_append_last_lines(transfer_id)
+            except Exception:
+                append_text = ""
 
         # -----------------------------------------
         # MEDIA
@@ -81,6 +104,9 @@ async def transfer_message(
 
                 if remove_count > 0:
                     caption = remove_last_lines(caption, remove_count)
+
+                if append_text:
+                    caption = append_last_lines(caption, append_text)
 
                 await client.send_file(
                     entity=target_entity,
@@ -110,6 +136,9 @@ async def transfer_message(
 
             if remove_count > 0:
                 text = remove_last_lines(text, remove_count)
+
+            if append_text:
+                text = append_last_lines(text, append_text)
 
             if not text:
                 return False

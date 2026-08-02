@@ -33,6 +33,8 @@ from telegram_client import tg_client
 from handlers.connect_account import registered_channels
 from handlers.connect_account import transfer_info
 from database import set_remove_last_lines
+from handlers.connect_account import append_lines_setting
+from database import set_append_last_lines
 
 # ---------------------- clear waiting state --------------------
 
@@ -105,7 +107,6 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text
 
-    # دکمه‌هایی که باعث لغو حالت انتظار می‌شوند
     MAIN_BUTTONS = [
         "📢 افزودن کانال",
         "📋 کانال‌های ثبت شده",
@@ -119,16 +120,21 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # =========================
     # دریافت کانال مبدا
     # =========================
+
     if state == State.SOURCE_CHANNEL:
+
         await receive_source_channel(update, context)
+
         return
 
     # =========================
     # حذف خطوط آخر
     # =========================
+
     if state == State.REMOVE_LAST_LINES:
 
         try:
+
             count = int(update.message.text.strip())
 
         except:
@@ -155,10 +161,42 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # =========================
+    # افزودن خطوط آخر
+    # =========================
+
+    if state == State.APPEND_LAST_LINES:
+
+        transfer_id = context.user_data.get("append_lines_transfer_id")
+
+        if not transfer_id:
+
+            context.user_data["state"] = State.NONE
+
+            return
+
+        append_text = update.message.text.strip()
+
+        set_append_last_lines(
+            transfer_id,
+            append_text,
+        )
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text(
+            "✅ متن جدید ذخیره شد.\n" "از این به بعد به آخر پست‌ها اضافه می‌شود."
+        )
+
+        return
+
+    # =========================
     # دریافت کانال مقصد
     # =========================
+
     if state == State.TARGET_CHANNEL:
+
         await receive_target_channel(update, context)
+
         return
 
     # =========================
@@ -273,6 +311,13 @@ def create_bot():
         CallbackQueryHandler(
             remove_lines_setting,
             pattern=r"^remove_lines_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            append_lines_setting,
+            pattern=r"^append_lines_\d+$",
         )
     )
 

@@ -28,14 +28,15 @@ CREATE TABLE IF NOT EXISTS transfers(
     enabled INTEGER DEFAULT 1,
     sent_count INTEGER DEFAULT 0,
     last_send TEXT,
-    remove_last_lines INTEGER DEFAULT 0
+    remove_last_lines INTEGER DEFAULT 0,
+    append_last_lines TEXT DEFAULT ''
 )
 """)
 
 db.commit()
 
 
-# ================= Transfers =================
+# ================= add Transfers =================
 
 
 def add_transfer(telegram_id, source_channel, target_channel):
@@ -54,6 +55,7 @@ def add_transfer(telegram_id, source_channel, target_channel):
 
 
 def get_user_transfers(telegram_id):
+
     cursor.execute(
         """
         SELECT
@@ -63,7 +65,8 @@ def get_user_transfers(telegram_id):
             enabled,
             sent_count,
             last_send,
-            remove_last_lines
+            remove_last_lines,
+            append_last_lines
         FROM transfers
         WHERE telegram_id=?
         ORDER BY id DESC
@@ -193,3 +196,47 @@ def get_user(telegram_id):
         (telegram_id,),
     )
     return cursor.fetchone()
+
+
+# ------------------- set append last lines ------------------
+
+
+def set_append_last_lines(
+    transfer_id,
+    text,
+):
+    cursor.execute(
+        """
+        UPDATE transfers
+        SET append_last_lines=?
+        WHERE id=?
+        """,
+        (
+            text,
+            transfer_id,
+        ),
+    )
+
+    db.commit()
+
+
+# ------------------- get append last lines ------------------
+
+
+def get_append_last_lines(transfer_id):
+
+    cursor.execute(
+        """
+        SELECT append_last_lines
+        FROM transfers
+        WHERE id=?
+        """,
+        (transfer_id,),
+    )
+
+    result = cursor.fetchone()
+
+    if result:
+        return result[0] or ""
+
+    return ""
