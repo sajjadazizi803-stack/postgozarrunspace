@@ -5,6 +5,8 @@ from database import add_transfer
 from listener import add_new_transfer
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from database import get_user_transfers
+import jdatetime
+from datetime import datetime
 
 from database import (
     delete_transfer,
@@ -195,6 +197,17 @@ async def transfer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sent_count = transfer[4]
     last_send = transfer[5]
 
+    # تبدیل تاریخ میلادی به شمسی
+    if last_send:
+        try:
+            dt = datetime.strptime(str(last_send), "%Y-%m-%d %H:%M:%S")
+            jalali_date = jdatetime.datetime.fromgregorian(datetime=dt)
+
+            last_send = jalali_date.strftime("%Y/%m/%d • %H:%M")
+
+        except Exception:
+            pass
+
     status = "🟢 فعال" if enabled else "🔴 متوقف"
 
     keyboard = [
@@ -223,6 +236,7 @@ async def transfer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 📥 مبدا: {source}
 📤 مقصد: {target}
+
 📨 تعداد پیام: {sent_count}
 🕒 آخرین انتقال: {last_send if last_send else "هنوز انتقالی انجام نشده"}
 
