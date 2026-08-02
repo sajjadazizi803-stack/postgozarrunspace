@@ -31,6 +31,13 @@ from telegram_client import tg_client
 from handlers.connect_account import registered_channels
 from handlers.connect_account import transfer_info
 
+# ---------------------- clear waiting state --------------------
+
+
+def clear_waiting_state(context):
+    context.user_data["state"] = State.NONE
+
+
 # =========================
 # START
 # =========================
@@ -93,6 +100,17 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_data is None:
         return
 
+    text = update.message.text
+
+    # دکمه‌هایی که باعث لغو حالت انتظار می‌شوند
+    MAIN_BUTTONS = [
+        "📢 افزودن کانال",
+        "📋 کانال‌های ثبت شده",
+    ]
+
+    if text in MAIN_BUTTONS:
+        clear_waiting_state(context)
+
     state = user_data.get("state", State.NONE)
 
     # مراحل گفتگو
@@ -105,8 +123,6 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # دکمه‌های اصلی
-    text = update.message.text
-
     if text == "📢 افزودن کانال":
         await connect_account(update, context)
         return
