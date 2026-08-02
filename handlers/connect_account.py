@@ -11,7 +11,7 @@ from database import (
     delete_transfer,
     set_transfer_enabled,
     get_user_transfers,
-    set_remove_last_lines,
+    get_remove_last_lines,
 )
 
 # =========================

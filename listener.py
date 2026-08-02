@@ -7,6 +7,7 @@ import os
 from database import (
     get_all_transfers,
     increase_sent_count,
+    get_remove_last_lines,
 )
 
 from telegram_client import tg_client
@@ -25,6 +26,21 @@ last_messages = {}
 
 channel_pts = {}
 
+# ------------------- remove last lines --------------------
+
+
+def remove_last_lines(text, count):
+
+    if not text or count <= 0:
+        return text
+
+    lines = text.splitlines()
+
+    if len(lines) <= count:
+        return ""
+
+    return "\n".join(lines[:-count])
+
 
 # =========================================================
 # TRANSFER MESSAGE
@@ -40,6 +56,14 @@ async def transfer_message(
 
     try:
 
+        remove_count = 0
+
+        if transfer_id is not None:
+            try:
+                remove_count = get_remove_last_lines(transfer_id)
+            except Exception:
+                remove_count = 0
+
         # -----------------------------------------
         # MEDIA
         # -----------------------------------------
@@ -49,21 +73,24 @@ async def transfer_message(
             file = await message.download_media()
 
             if not file:
-
                 return False
 
             try:
 
+                caption = message.text or ""
+
+                if remove_count > 0:
+                    caption = remove_last_lines(caption, remove_count)
+
                 await client.send_file(
                     entity=target_entity,
                     file=file,
-                    caption=message.text or "",
+                    caption=caption,
                 )
 
             finally:
 
                 try:
-
                     if os.path.exists(file):
                         os.remove(file)
 
@@ -77,6 +104,12 @@ async def transfer_message(
         else:
 
             text = message.text or ""
+
+            if not text:
+                return False
+
+            if remove_count > 0:
+                text = remove_last_lines(text, remove_count)
 
             if not text:
                 return False
@@ -100,7 +133,10 @@ async def transfer_message(
 
         return True
 
-    except Exception:
+    except Exception as e:
+
+        print("TRANSFER ERROR:", e)
+
         return False
 
 

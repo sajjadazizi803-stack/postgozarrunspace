@@ -62,13 +62,15 @@ def get_user_transfers(telegram_id):
             target_channel,
             enabled,
             sent_count,
-            last_send
+            last_send,
+            remove_last_lines
         FROM transfers
         WHERE telegram_id=?
         ORDER BY id DESC
         """,
         (telegram_id,),
     )
+
     return cursor.fetchall()
 
 

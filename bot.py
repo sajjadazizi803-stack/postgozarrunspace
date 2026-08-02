@@ -255,8 +255,6 @@ def create_bot():
         )
     )
 
-    app.add_handler(CallbackQueryHandler(buttons))
-
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -278,6 +276,7 @@ def create_bot():
         )
     )
 
+    app.add_handler(CallbackQueryHandler(buttons))
     app.bot_data["tg_client"] = tg_client
 
     async def startup(app):
