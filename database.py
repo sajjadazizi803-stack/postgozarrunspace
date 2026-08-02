@@ -248,3 +248,51 @@ def get_append_last_lines(transfer_id):
         return result[0] or ""
 
     return ""
+
+
+# ================= SUPPORT =================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS support_messages(
+    admin_message_id INTEGER PRIMARY KEY,
+    user_id INTEGER
+)
+""")
+
+db.commit()
+
+
+def add_support_message(admin_message_id, user_id):
+
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO support_messages
+        (admin_message_id, user_id)
+        VALUES (?, ?)
+        """,
+        (
+            admin_message_id,
+            user_id,
+        ),
+    )
+
+    db.commit()
+
+
+def get_support_user(admin_message_id):
+
+    cursor.execute(
+        """
+        SELECT user_id
+        FROM support_messages
+        WHERE admin_message_id=?
+        """,
+        (admin_message_id,),
+    )
+
+    row = cursor.fetchone()
+
+    if row:
+        return row[0]
+
+    return None

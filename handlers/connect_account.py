@@ -418,19 +418,17 @@ async def transfer_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(
                 "✂️ حذف خطوط آخر",
                 callback_data=f"remove_lines_{transfer_id}",
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 "➕ افزودن خطوط آخر",
                 callback_data=f"append_lines_{transfer_id}",
-            )
+            ),
         ],
         [
             InlineKeyboardButton(
                 "🔙 بازگشت",
                 callback_data=f"transfer_{transfer_id}",
-            )
+            ),
         ],
     ]
 

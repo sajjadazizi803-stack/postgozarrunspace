@@ -29,6 +29,12 @@ from handlers.connect_account import (
     remove_lines_setting,
 )
 
+from handlers.support import (
+    forward_to_admin,
+    admin_reply,
+    contact_support_callback,
+)
+
 import config
 from telegram_client import tg_client
 from handlers.connect_account import registered_channels
@@ -36,6 +42,7 @@ from handlers.connect_account import transfer_info
 from database import set_remove_last_lines
 from handlers.connect_account import append_lines_setting
 from database import set_append_last_lines
+from config import ADMIN_ID
 
 # ---------------------- clear waiting state --------------------
 
@@ -107,6 +114,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             [
                 "📚 آموزش استفاده",
+                "💬 ارتباط با پشتیبانی",
             ],
         ],
         resize_keyboard=True,
@@ -338,12 +346,17 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_data is None:
         return
 
+    # ------------------------
+    # پاسخ پشتیبانی (ادمین)
+    # ------------------------
+
     text = update.message.text
 
     MAIN_BUTTONS = [
         "📢 افزودن کانال",
         "📋 کانال‌های ثبت شده",
         "📚 آموزش استفاده",
+        "💬 ارتباط با پشتیبانی",
     ]
 
     if text in MAIN_BUTTONS:
@@ -373,7 +386,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         except:
 
-            await update.message.reply_text("❌ لطفاً فقط عدد ارسال کنید.\nمثال: 8")
+            await update.message.reply_text("❌ لطفاً فقط عدد ارسال کن.\nمثال: 8")
 
             return
 
@@ -389,7 +402,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["state"] = State.NONE
 
         await update.message.reply_text(
-            f"✅ تنظیم شد.\n" f"از این به بعد {count} خط آخر پست‌ها حذف می‌شود."
+            f"✅ تنظیم شد.\nاز این به بعد {count} خط آخر حذف میشه."
         )
 
         return
@@ -417,9 +430,17 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.user_data["state"] = State.NONE
 
-        await update.message.reply_text(
-            "✅ متن جدید ذخیره شد.\n" "از این به بعد به آخر پست‌ها اضافه می‌شود."
-        )
+        await update.message.reply_text("✅ متن ذخیره شد.")
+
+        return
+
+    # =========================
+    # ارتباط با پشتیبانی
+    # =========================
+
+    if state == State.SUPPORT:
+
+        await forward_to_admin(update, context)
 
         return
 
@@ -436,27 +457,31 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # =========================
     # دکمه‌های اصلی
     # =========================
+
     if text == "📢 افزودن کانال":
 
-        await connect_account(
-            update,
-            context,
-        )
+        await connect_account(update, context)
 
         return
 
     if text == "📋 کانال‌های ثبت شده":
 
-        await registered_channels(
-            update,
-            context,
-        )
+        await registered_channels(update, context)
 
         return
 
     if text == "📚 آموزش استفاده":
 
         await show_training_menu(update, context)
+
+        return
+
+    if text == "💬 ارتباط با پشتیبانی":
+
+        await contact_support_callback(
+            update,
+            context,
+        )
 
         return
 
@@ -566,6 +591,14 @@ def create_bot():
             finish_transfer,
             pattern="^finish_transfer$",
         )
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.ALL & ~filters.COMMAND,
+            admin_reply,
+        ),
+        group=100,
     )
 
     app.add_handler(CallbackQueryHandler(buttons))

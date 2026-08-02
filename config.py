@@ -12,3 +12,5 @@ API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 
 SESSION_FOLDER = "sessions"
+
+SUPPORT = "support"
