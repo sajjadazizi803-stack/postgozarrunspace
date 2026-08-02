@@ -49,7 +49,6 @@ async def transfer_message(
             file = await message.download_media()
 
             if not file:
-                print(f"❌ Could not download message " f"{message.id}")
 
                 return False
 
@@ -94,21 +93,14 @@ async def transfer_message(
         if transfer_id is not None:
 
             try:
-
                 increase_sent_count(transfer_id)
 
-            except Exception as e:
-
-                print(f"❌ COUNT ERROR: {e}")
-
-        print(f"✅ FORWARDED: " f"{message.id}")
+            except Exception:
+                pass
 
         return True
 
-    except Exception as e:
-
-        print(f"❌ TRANSFER ERROR " f"{message.id}: " f"{type(e).name}: {e}")
-
+    except Exception:
         return False
 
 
@@ -130,13 +122,9 @@ async def get_channel_pts(
 
         pts = result.full_chat.pts
 
-        print(f"📌 CHANNEL PTS " f"{source_entity.id}: {pts}")
-
         return pts
 
     except Exception as e:
-
-        print(f"❌ GET PTS ERROR " f"{source_entity.id}: " f"{type(e).name}: {e}")
 
         return None
 
@@ -159,8 +147,6 @@ async def polling_worker(
         source_id,
         target_id,
     )
-
-    print(f"🔄 CHANNEL POLLING STARTED: " f"{source_id} -> {target_id}")
 
     while True:
 
@@ -196,8 +182,6 @@ async def polling_worker(
             await asyncio.sleep(2)
 
         except Exception as e:
-
-            print("POLL ERROR:", e)
 
             await asyncio.sleep(5)
 
@@ -235,8 +219,6 @@ async def register_listener(
 
     polling_tasks[transfer_key] = task
 
-    print(f"✅ Registered polling: " f"{source_channel} -> {target_channel}")
-
 
 # =========================================================
 # START ALL LISTENERS
@@ -250,8 +232,6 @@ async def start_all_listeners():
         await tg_client.connect()
 
     transfers = get_all_transfers()
-
-    print(f"📋 TRANSFERS FOUND: " f"{len(transfers)}")
 
     for transfer in transfers:
 
@@ -278,8 +258,6 @@ async def start_all_listeners():
         if enabled != 1:
             continue
 
-        print(f"🔗 STARTING: " f"{source} -> {target}")
-
         try:
 
             await register_listener(
@@ -289,13 +267,8 @@ async def start_all_listeners():
                 transfer_id=transfer_id,
             )
 
-        except Exception as e:
-
-            print(
-                f"❌ START LISTENER ERROR: "
-                f"{source} -> {target}: "
-                f"{type(e).name}: {e}"
-            )
+        except Exception:
+            pass
 
 
 # =========================================================
