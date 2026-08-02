@@ -105,9 +105,9 @@ def increase_sent_count(transfer_id):
     cursor.execute(
         """
         UPDATE transfers
-        SET sent_count = sent_count + 1,
-            last_send = datetime('now','localtime')
-        WHERE id=?
+SET sent_count = sent_count + 1,
+    last_send = datetime('now', '+3 hours', '+30 minutes')
+WHERE id=?
         """,
         (transfer_id,),
     )

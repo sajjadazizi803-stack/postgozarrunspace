@@ -322,6 +322,67 @@ async def toggle_transfer_callback(update: Update, context: ContextTypes.DEFAULT
 
             break
 
-    query.data = f"transfer_{transfer_id}"
+    # دوباره اطلاعات جدید انتقال را بگیر
+    transfers = get_user_transfers(query.from_user.id)
 
-    await transfer_info(update, context)
+    transfer = None
+
+    for item in transfers:
+        if item[0] == transfer_id:
+            transfer = item
+            break
+
+    if transfer is None:
+        await query.edit_message_text("❌ انتقال پیدا نشد.")
+        return
+
+    source = transfer[1]
+    target = transfer[2]
+    enabled = transfer[3]
+    sent_count = transfer[4]
+    last_send = transfer[5]
+
+    if last_send:
+        try:
+            dt = datetime.strptime(str(last_send), "%Y-%m-%d %H:%M:%S")
+            jalali_date = jdatetime.datetime.fromgregorian(datetime=dt)
+            last_send = jalali_date.strftime("%Y/%m/%d • %H:%M")
+        except Exception:
+            pass
+
+    status = "🟢 فعال" if enabled else "🔴 متوقف"
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "⏸ توقف" if enabled else "▶️ فعال",
+                callback_data=f"toggle_{transfer_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🗑 حذف انتقال",
+                callback_data=f"delete_{transfer_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_channels",
+            )
+        ],
+    ]
+
+    await query.edit_message_text(
+        f"""📡 اطلاعات انتقال
+
+📥 مبدا: {source}
+📤 مقصد: {target}
+
+📨 تعداد پیام: {sent_count}
+🕒 آخرین انتقال: {last_send if last_send else "هنوز انتقالی انجام نشده"}
+
+📊 وضعیت: {status}
+""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
