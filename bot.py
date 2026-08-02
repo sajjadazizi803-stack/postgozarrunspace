@@ -43,6 +43,64 @@ def clear_waiting_state(context):
     context.user_data["state"] = State.NONE
 
 
+# ---------------------- training keyboard --------------------
+
+
+def training_keyboard():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "⚠️ نکات مهم",
+                    callback_data="training_rules",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📢 اتصال کانال‌ها",
+                    callback_data="training_connect",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⚙️ تنظیمات ارسال پست",
+                    callback_data="training_settings",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "✂️ حذف خطوط آخر",
+                    callback_data="training_delete_lines",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "✍️ افزودن خطوط آخر",
+                    callback_data="training_add_lines",
+                )
+            ],
+        ]
+    )
+
+
+# ---------------------- show training menu --------------------
+
+
+async def show_training_menu(update, context):
+
+    text = (
+        "📚 <b>آموزش استفاده از ربات</b>\n\n"
+        "برای مشاهده آموزش هر بخش، روی دکمه مورد نظر کلیک کنید.\n\n"
+        "پیشنهاد می‌شود تمام بخش‌ها را با دقت مطالعه کنید "
+        "تا بتوانید بهتر از ربات استفاده کنید. ✅"
+    )
+
+    await update.message.reply_text(
+        text, reply_markup=training_keyboard(), parse_mode="HTML"
+    )
+
+
 # =========================
 # START
 # =========================
@@ -54,12 +112,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             ["📢 افزودن کانال"],
             ["📋 کانال‌های ثبت شده"],
+            ["📚 آموزش استفاده"],
         ],
         resize_keyboard=True,
     )
 
     await update.message.reply_text(
-        """🚀 به ربات PostGozar خوش آمدید.
+        """🚀 به ربات runspace خوش آمدید.
 
 با این ربات می‌توانید:
 
@@ -81,7 +140,219 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "connect_account":
-        await connect_account(update, context)
+
+        await connect_account(
+            update,
+            context,
+        )
+
+        return
+
+    if query.data == "training_back":
+
+        await query.edit_message_text(
+            "📚 <b>آموزش استفاده از ربات</b>\n\n"
+            "برای مشاهده آموزش هر بخش، روی دکمه مورد نظر کلیک کنید.\n\n"
+            "پیشنهاد می‌شود تمام بخش‌ها را با دقت مطالعه کنید "
+            "تا بتوانید بهتر از ربات استفاده کنید. ✅",
+            reply_markup=training_keyboard(),
+            parse_mode="HTML",
+        )
+
+        return
+
+    if query.data == "training_rules":
+
+        await training_rules(
+            update,
+            context,
+        )
+
+        return
+
+    if query.data == "training_connect":
+
+        await training_connect(
+            update,
+            context,
+        )
+
+        return
+
+    if query.data == "training_settings":
+
+        await training_settings(
+            update,
+            context,
+        )
+
+        return
+
+    if query.data == "training_delete_lines":
+
+        await training_delete_lines(
+            update,
+            context,
+        )
+
+        return
+
+    if query.data == "training_add_lines":
+
+        await training_add_lines(
+            update,
+            context,
+        )
+
+        return
+
+
+# --------------------- training rules -------------------
+
+
+async def training_rules(update, context):
+
+    query = update.callback_query
+
+    await query.edit_message_text(
+        "<b>⚠️ نکات مهم</b>\n\n"
+        "برای اینکه ربات بدون مشکل کار کند، حتماً موارد زیر را رعایت کنید:\n\n"
+        "🔹 <b>ربات</b> باید در کانال مقصد <b>ادمین</b> باشد و اجازه ارسال پیام داشته باشد.\n\n"
+        "🔹 <b>اکانت متصل به ربات</b> هم باید در کانال مقصد ادمین باشد.\n\n"
+        "اکانت متصل:\n"
+        "<code>@egpora_e3</code>\n\n"
+        "⚠️ پیشنهاد می‌شود هنگام ادمین کردن، تمام دسترسی‌ها مخصوصاً <b>ارسال پیام</b> فعال باشد.\n\n"
+        "در صورت نداشتن دسترسی لازم، ربات نمی‌تواند پست‌ها را در کانال مقصد ارسال کند.",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🔙 بازگشت به آموزش", callback_data="training_back"
+                    )
+                ]
+            ]
+        ),
+        parse_mode="HTML",
+    )
+
+
+# --------------------- training connect -------------------
+
+
+async def training_connect(update, context):
+
+    query = update.callback_query
+
+    await query.edit_message_text(
+        "<b>📢 اتصال کانال‌ها</b>\n\n"
+        "برای شروع کار با ربات، ابتدا از منوی اصلی روی گزینه:\n\n"
+        "➕ <b>افزودن کانال</b>\n\n"
+        "کلیک کنید.\n\n"
+        "سپس اطلاعات کانال‌ها را برای ربات ارسال کنید:\n\n"
+        "📌 <b>کانال مبدا:</b>\n"
+        "کانالی که می‌خواهید پست‌ها از آن دریافت شود.\n\n"
+        "📌 <b>کانال مقصد:</b>\n"
+        "کانالی که می‌خواهید پست‌ها در آن ارسال شود.\n\n"
+        "بعد از اتصال، ربات پست‌های جدید کانال مبدا را دریافت کرده "
+        "و در کانال مقصد ارسال می‌کند. ✅",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🔙 بازگشت به آموزش", callback_data="training_back"
+                    )
+                ]
+            ]
+        ),
+        parse_mode="HTML",
+    )
+
+
+# --------------------- training settings -------------------
+
+
+async def training_settings(update, context):
+
+    query = update.callback_query
+
+    await query.edit_message_text(
+        "<b>⚙️ تنظیمات ارسال پست</b>\n\n"
+        "در این بخش می‌توانید نحوه ارسال پست‌ها از کانال مبدا "
+        "به کانال مقصد را شخصی‌سازی کنید.\n\n"
+        "با استفاده از تنظیمات می‌توانید متن پست‌ها را تغییر دهید، "
+        "بخشی از متن را حذف کنید یا متن دلخواه خودتان را به پست‌ها اضافه کنید.\n\n"
+        "برای تنظیم هر بخش، از گزینه‌های مربوط به تنظیمات استفاده کنید. ✅",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🔙 بازگشت به آموزش", callback_data="training_back"
+                    )
+                ]
+            ]
+        ),
+        parse_mode="HTML",
+    )
+
+
+# --------------------- training delete lines -------------------
+
+
+async def training_delete_lines(update, context):
+
+    query = update.callback_query
+
+    await query.edit_message_text(
+        "<b>✂️ حذف خطوط آخر</b>\n\n"
+        "با این قابلیت می‌توانید چند خط آخر پست‌های کانال مبدا را حذف کنید.\n\n"
+        "مثلاً اگر آخر همه پست‌ها تبلیغ، آیدی کانال یا متن اضافه وجود دارد، "
+        "می‌توانید به ربات بگویید آن‌ها را حذف کند.\n\n"
+        "<b>مثال:</b>\n"
+        "اگر مقدار <code>3</code> را تنظیم کنید، ربات قبل از ارسال، "
+        "<b>۳ خط آخر</b> متن پست را حذف می‌کند و سپس آن را در کانال مقصد ارسال می‌کند.",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🔙 بازگشت به آموزش",
+                        callback_data="training_back",
+                    )
+                ]
+            ]
+        ),
+        parse_mode="HTML",
+    )
+
+
+# --------------------- training add lines -------------------
+
+
+async def training_add_lines(update, context):
+
+    query = update.callback_query
+
+    await query.edit_message_text(
+        "<b>✍️ افزودن خطوط آخر</b>\n\n"
+        "با این قابلیت می‌توانید یک متن ثابت به انتهای تمام پست‌های ارسالی اضافه کنید.\n\n"
+        "برای مثال می‌توانید:\n\n"
+        "• آیدی کانال خودتان\n"
+        "• متن تبلیغاتی\n"
+        "• امضا\n"
+        "• لینک دلخواه\n\n"
+        "را ثبت کنید تا ربات آن را به انتهای تمام پست‌های جدید اضافه کند.\n\n"
+        "هر زمان هم بخواهید، می‌توانید متن ثبت‌شده را تغییر دهید.",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🔙 بازگشت به آموزش",
+                        callback_data="training_back",
+                    )
+                ]
+            ]
+        ),
+        parse_mode="HTML",
+    )
 
 
 # =========================
@@ -110,6 +381,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     MAIN_BUTTONS = [
         "📢 افزودن کانال",
         "📋 کانال‌های ثبت شده",
+        "📚 آموزش استفاده",
     ]
 
     if text in MAIN_BUTTONS:
@@ -217,6 +489,12 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update,
             context,
         )
+
+        return
+
+    if text == "📚 آموزش استفاده":
+
+        await show_training_menu(update, context)
 
         return
 
