@@ -553,19 +553,77 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # بررسی وجود ربات در مقصد
     # ----------------------------------
 
+    async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+        query = update.callback_query
+        await query.answer()
+
+    source_channel = context.user_data.get("pending_source")
+    target_channel = context.user_data.get("pending_target")
+
+    if not source_channel or not target_channel:
+
+        await query.edit_message_text("❌ اطلاعات انتقال پیدا نشد.")
+        return
+
+    # ----------------------------------
+    # بررسی عضویت اکانت در مبدا
+    # ----------------------------------
+
     try:
 
-        bot_member = await context.bot.get_chat_member(
-            target_channel,
-            context.bot.id,
+        await tg_client(
+            GetParticipantRequest(
+                source_channel,
+                "me",
+            )
         )
+
+    except UserNotParticipantError:
+
+        await query.edit_message_text("❌ اکانت داخل کانال مبدا عضو نیست.")
+        return
 
     except Exception:
+        pass
 
-        await query.edit_message_text(
-            "❌ ربات داخل کانال مقصد نیست.\n\n"
-            "ابتدا ربات را به کانال اضافه و ادمین کنید."
+    # ----------------------------------
+    # بررسی عضویت اکانت در مقصد
+    # ----------------------------------
+
+    try:
+
+        await tg_client(
+            GetParticipantRequest(
+                target_channel,
+                "me",
+            )
         )
+
+    except UserNotParticipantError:
+
+        await query.edit_message_text("❌ اکانت داخل کانال مقصد عضو نیست.")
+        return
+
+    except Exception:
+        pass
+
+    # ----------------------------------
+    # بررسی وجود ربات
+    # ----------------------------------
+
+    try:
+
+        me = await context.bot.get_me()
+
+        bot_member = await context.bot.get_chat_member(
+            chat_id=target_channel,
+            user_id=me.id,
+        )
+
+    except Exception as e:
+
+        await query.edit_message_text(f"ERROR:\n{e}")
 
         return
 
@@ -578,10 +636,7 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "creator",
     ):
 
-        await query.edit_message_text(
-            "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
-            "ابتدا ربات را ادمین کنید سپس دوباره روی «✅ انجام شد» بزنید."
-        )
+        await query.edit_message_text("❌ ربات ادمین کانال مقصد نیست.")
 
         return
 
@@ -598,9 +653,9 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("pending_source", None)
     context.user_data.pop("pending_target", None)
 
-    await query.edit_message_text(f"""✅ انتقال با موفقیت ثبت شد.
+    await query.edit_message_text(f"""✅ انتقال ثبت شد.
 
 📥 مبدا: {source_channel}
 📤 مقصد: {target_channel}
 
-🚀 انتقال خودکار از این لحظه فعال شد.""")
+🚀 انتقال خودکار فعال شد.""")
