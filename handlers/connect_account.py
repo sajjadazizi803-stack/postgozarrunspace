@@ -8,9 +8,7 @@ import jdatetime
 from datetime import datetime
 from telegram_client import tg_client
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.errors import UserAlreadyParticipantError
-from bot import tg_client
 from telegram import ChatMemberAdministrator
 from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.errors import UserNotParticipantError
