@@ -72,10 +72,9 @@ async def receive_source_channel(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data["state"] = State.TARGET_CHANNEL
 
     await update.message.reply_text(f"""✅ اکانت عضو کانال مبدا شد.
-
 📥 {source_channel}
-
-حالا آیدی کانال مقصد را ارسال کنید.""")
+حالا آیدی کانال مقصد را ارسال کنید.
+مثال: @target_channel""")
 
 
 # =========================
@@ -124,19 +123,14 @@ async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_text(
         f"""✅ اکانت عضو کانال مقصد شد.
 
-📥 مبدا:
-{source_channel}
+📥 مبدا: {source_channel}
+📤 مقصد: {target_channel}
+حالا: 
 
-📤 مقصد:
-{target_channel}
+1- ربات رو ادمین کانال مقصد کنید
+2- اکانت رو هم ادمین چنل کنید
 
-اکنون:
-
-1- ربات را ادمین کانال مقصد کنید.
-
-2- اکانت را نیز ادمین کنید.
-
-سپس روی دکمه زیر بزنید.""",
+بعد روی دکمه زیر بزنید:""",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
