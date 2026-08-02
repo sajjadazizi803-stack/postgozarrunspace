@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS transfers(
     target_channel TEXT,
     enabled INTEGER DEFAULT 1,
     sent_count INTEGER DEFAULT 0,
-    last_send TEXT
+    last_send TEXT,
+    remove_last_lines INTEGER DEFAULT 0
 )
 """)
 
@@ -49,6 +50,9 @@ def add_transfer(telegram_id, source_channel, target_channel):
     db.commit()
 
 
+# ------------------- get user transfers ------------------
+
+
 def get_user_transfers(telegram_id):
     cursor.execute(
         """
@@ -68,6 +72,9 @@ def get_user_transfers(telegram_id):
     return cursor.fetchall()
 
 
+# ------------------- get all transfers ------------------
+
+
 def get_all_transfers():
     cursor.execute("""
         SELECT
@@ -81,12 +88,18 @@ def get_all_transfers():
     return cursor.fetchall()
 
 
+# ------------------- delete transfer ------------------
+
+
 def delete_transfer(transfer_id):
     cursor.execute(
         "DELETE FROM transfers WHERE id=?",
         (transfer_id,),
     )
     db.commit()
+
+
+# ------------------- set tranfer enabled ------------------
 
 
 def set_transfer_enabled(transfer_id, enabled):
@@ -101,6 +114,52 @@ def set_transfer_enabled(transfer_id, enabled):
     db.commit()
 
 
+# ------------------- set remove last lines ------------------
+
+
+def set_remove_last_lines(
+    transfer_id,
+    count,
+):
+
+    cursor.execute(
+        """
+        UPDATE transfers
+        SET remove_last_lines=?
+        WHERE id=?
+        """,
+        (
+            count,
+            transfer_id,
+        ),
+    )
+
+    db.commit()
+
+
+# ------------------- get remove last lines ------------------
+
+
+def get_remove_last_lines(transfer_id):
+
+    cursor.execute(
+        """
+        SELECT remove_last_lines
+        FROM transfers
+        WHERE id=?
+        """,
+        (transfer_id,),
+    )
+
+    result = cursor.fetchone()
+
+    if result:
+        return result[0]
+
+    return 0
+
+
+# ------------------- increase sent count ------------------
 def increase_sent_count(transfer_id):
     cursor.execute(
         """

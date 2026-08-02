@@ -4,13 +4,14 @@ from conversation import State
 from database import add_transfer
 from listener import add_new_transfer
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from database import get_user_transfers
 import jdatetime
 from datetime import datetime
 
 from database import (
     delete_transfer,
     set_transfer_enabled,
+    get_user_transfers,
+    set_remove_last_lines,
 )
 
 # =========================
@@ -215,12 +216,16 @@ async def transfer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(
                 "⏸ توقف" if enabled else "▶️ فعال",
                 callback_data=f"toggle_{transfer_id}",
-            )
+            ),
+            InlineKeyboardButton(
+                "🗑 حذف",
+                callback_data=f"delete_{transfer_id}",
+            ),
         ],
         [
             InlineKeyboardButton(
-                "🗑 حذف انتقال",
-                callback_data=f"delete_{transfer_id}",
+                "⚙️ تنظیمات",
+                callback_data=f"settings_{transfer_id}",
             )
         ],
         [
@@ -386,3 +391,58 @@ async def toggle_transfer_callback(update: Update, context: ContextTypes.DEFAULT
 """,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
+
+# -------------------- transfer settings --------------------
+
+
+async def transfer_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[1])
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "✂️ حذف خطوط آخر",
+                callback_data=f"remove_lines_{transfer_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data=f"transfer_{transfer_id}",
+            )
+        ],
+    ]
+
+    await query.edit_message_text(
+        """⚙️ تنظیمات انتقال
+
+تنظیماتی که می‌خواهید ربات روی هر پست اعمال کند و سپس ارسال کند را از دکمه‌های زیر انتخاب کنید.""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+# -------------------- remove lines setting --------------------
+
+
+async def remove_lines_setting(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    context.user_data["remove_lines_transfer_id"] = transfer_id
+
+    context.user_data["state"] = State.REMOVE_LAST_LINES
+
+    await query.edit_message_text("""✂️ حذف خطوط آخر
+
+چند خط آخر پست حذف شود؟
+
+مثال:
+8""")

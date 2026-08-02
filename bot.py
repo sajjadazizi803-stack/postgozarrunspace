@@ -24,12 +24,15 @@ from handlers.connect_account import (
     delete_transfer_callback,
     toggle_transfer_callback,
     back_to_registered_channels,
+    transfer_settings,
+    remove_lines_setting,
 )
 
 import config
 from telegram_client import tg_client
 from handlers.connect_account import registered_channels
 from handlers.connect_account import transfer_info
+from database import set_remove_last_lines
 
 # ---------------------- clear waiting state --------------------
 
@@ -113,22 +116,70 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     state = user_data.get("state", State.NONE)
 
-    # مراحل گفتگو
+    # =========================
+    # دریافت کانال مبدا
+    # =========================
     if state == State.SOURCE_CHANNEL:
         await receive_source_channel(update, context)
         return
 
+    # =========================
+    # حذف خطوط آخر
+    # =========================
+    if state == State.REMOVE_LAST_LINES:
+
+        try:
+            count = int(update.message.text.strip())
+
+        except:
+
+            await update.message.reply_text("❌ لطفاً فقط عدد ارسال کنید.\nمثال: 8")
+
+            return
+
+        transfer_id = context.user_data.get("remove_lines_transfer_id")
+
+        if transfer_id:
+
+            set_remove_last_lines(
+                transfer_id,
+                count,
+            )
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text(
+            f"✅ تنظیم شد.\n" f"از این به بعد {count} خط آخر پست‌ها حذف می‌شود."
+        )
+
+        return
+
+    # =========================
+    # دریافت کانال مقصد
+    # =========================
     if state == State.TARGET_CHANNEL:
         await receive_target_channel(update, context)
         return
 
+    # =========================
     # دکمه‌های اصلی
+    # =========================
     if text == "📢 افزودن کانال":
-        await connect_account(update, context)
+
+        await connect_account(
+            update,
+            context,
+        )
+
         return
 
     if text == "📋 کانال‌های ثبت شده":
-        await registered_channels(update, context)
+
+        await registered_channels(
+            update,
+            context,
+        )
+
         return
 
 
@@ -210,6 +261,20 @@ def create_bot():
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             text_buttons,
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            transfer_settings,
+            pattern=r"^settings_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            remove_lines_setting,
+            pattern=r"^remove_lines_\d+$",
         )
     )
 
