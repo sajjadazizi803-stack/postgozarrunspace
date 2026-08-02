@@ -40,15 +40,23 @@ db.commit()
 
 
 def add_transfer(telegram_id, source_channel, target_channel):
+
     cursor.execute(
         """
         INSERT INTO transfers
         (telegram_id, source_channel, target_channel)
         VALUES (?, ?, ?)
         """,
-        (telegram_id, source_channel, target_channel),
+        (
+            telegram_id,
+            source_channel,
+            target_channel,
+        ),
     )
+
     db.commit()
+
+    return cursor.lastrowid
 
 
 # ------------------- get user transfers ------------------

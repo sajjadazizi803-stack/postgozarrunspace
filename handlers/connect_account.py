@@ -581,10 +581,15 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ثبت انتقال
     # ----------------------------------
 
-    add_transfer(
+    transfer_id = add_transfer(
         query.from_user.id,
         source_channel,
         target_channel,
+    )
+
+    await add_new_transfer(
+        tg_client,
+        transfer_id,
     )
 
     context.user_data.pop("pending_source", None)
