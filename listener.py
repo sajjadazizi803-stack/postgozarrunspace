@@ -152,6 +152,21 @@ async def polling_worker(
 
         try:
 
+            # بررسی وضعیت انتقال
+            transfers = get_all_transfers()
+
+            enabled = False
+
+            for transfer in transfers:
+                if transfer[0] == transfer_id:
+                    enabled = transfer[4] == 1
+                    break
+
+            # اگر انتقال متوقف شده بود
+            if not enabled:
+                await asyncio.sleep(3)
+                continue
+
             messages = await client.get_messages(
                 source_entity,
                 limit=1,
@@ -181,7 +196,7 @@ async def polling_worker(
 
             await asyncio.sleep(2)
 
-        except Exception as e:
+        except Exception:
 
             await asyncio.sleep(5)
 
