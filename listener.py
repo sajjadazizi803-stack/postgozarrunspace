@@ -142,7 +142,7 @@ async def get_channel_pts(
 
 
 # =========================================================
-# CHANNEL DIFFERENCE POLLING
+# polling worker
 # =========================================================
 
 
@@ -152,7 +152,6 @@ async def polling_worker(
     target_entity,
     transfer_id=None,
 ):
-
     source_id = source_entity.id
     target_id = target_entity.id
 
@@ -163,198 +162,47 @@ async def polling_worker(
 
     print(f"🔄 CHANNEL POLLING STARTED: " f"{source_id} -> {target_id}")
 
-    # =====================================================
-    # INITIAL PTS
-    # =====================================================
+    while True:
 
-    pts = await get_channel_pts(
-        client,
-        source_entity,
-    )
+        try:
 
-    if pts is None:
+            messages = await client.get_messages(
+                source_entity,
+                limit=1,
+            )
 
-        print(f"❌ Could not initialize PTS " f"for {source_id}")
-
-        polling_tasks.pop(
-            transfer_key,
-            None,
-        )
-
-        return
-
-    channel_pts[transfer_key] = pts
-
-    # =====================================================
-    # LOOP
-    # =====================================================
-
-    try:
-
-        while True:
-
-            try:
-
-                current_pts = channel_pts.get(
-                    transfer_key,
-                    pts,
-                )
-
-                result = await client(
-                    functions.updates.GetChannelDifferenceRequest(
-                        force=True,
-                        channel=source_entity,
-                        filter=types.ChannelMessagesFilterEmpty(),
-                        pts=current_pts,
-                        limit=100,
-                    )
-                )
-
-                result_type = type(result).name
-
-                # =================================================
-                # NO NEW UPDATE
-                # =================================================
-
-                if result_type == "ChannelDifferenceEmpty":
-
-                    channel_pts[transfer_key] = result.pts
-
-                    pts = result.pts
-
-                    await asyncio.sleep(2)
-
-                    continue
-
-                # =================================================
-                # NEW UPDATES
-                # =================================================
-
-                if result_type == "ChannelDifference":
-
-                    new_messages = result.new_messages or []
-
-                    if new_messages:
-
-                        print(f"📨 NEW CHANNEL MESSAGES: " f"{len(new_messages)}")
-
-                    for message in sorted(
-                        new_messages,
-                        key=lambda x: x.id,
-                    ):
-
-                        last_id = last_messages.get(
-                            transfer_key,
-                            0,
-                        )
-
-                        # -----------------------------------------
-                        # DUPLICATE PROTECTION
-                        # -----------------------------------------
-
-                        if message.id <= last_id:
-                            continue
-
-                        # -----------------------------------------
-                        # REGISTER ID BEFORE SEND
-                        # -----------------------------------------
-
-                        last_messages[transfer_key] = message.id
-
-                        await transfer_message(
-                            client=client,
-                            message=message,
-                            target_entity=target_entity,
-                            transfer_id=transfer_id,
-                        )
-
-                    # -----------------------------------------
-                    # UPDATE PTS
-                    # -----------------------------------------
-
-                    channel_pts[transfer_key] = result.pts
-
-                    pts = result.pts
-
-                    # اگر هنوز ادامه دارد
-                    if not getattr(
-                        result,
-                        "final",
-                        True,
-                    ):
-
-                        await asyncio.sleep(0.1)
-
-                        continue
-
-                    await asyncio.sleep(2)
-
-                    continue
-
-                # =================================================
-                # TOO LONG
-                # =================================================
-
-                if result_type == "ChannelDifferenceTooLong":
-
-                    print(f"⚠️ CHANNEL DIFFERENCE " f"TOO LONG: " f"{source_id}")
-
-                    # -----------------------------------------
-                    # Reset PTS
-                    # -----------------------------------------
-
-                    new_pts = await get_channel_pts(
-                        client,
-                        source_entity,
-                    )
-
-                    if new_pts is not None:
-
-                        channel_pts[transfer_key] = new_pts
-
-                        pts = new_pts
-
-                    await asyncio.sleep(2)
-
-                    continue
-
-                # =================================================
-                # UNKNOWN RESPONSE
-                # =================================================
-
-                print(f"⚠️ UNKNOWN CHANNEL RESPONSE: " f"{result_type}")
-
+            if not messages:
                 await asyncio.sleep(2)
+                continue
 
-            # =====================================================
-            # FLOOD WAIT
-            # =====================================================
+            message = messages[0]
 
-            except Exception as e:
+            last_id = last_messages.get(
+                transfer_key,
+                0,
+            )
 
-                print(
-                    f"❌ CHANNEL POLLING ERROR " f"{source_id}: " f"{type(e).name}: {e}"
+            if message.id > last_id:
+
+                last_messages[transfer_key] = message.id
+
+                await transfer_message(
+                    client=client,
+                    message=message,
+                    target_entity=target_entity,
+                    transfer_id=transfer_id,
                 )
 
-                await asyncio.sleep(3)
+            await asyncio.sleep(2)
 
-    except asyncio.CancelledError:
+        except Exception as e:
 
-        print(f"🛑 CHANNEL POLLING STOPPED: " f"{source_id}")
+            print("POLL ERROR:", e)
 
-        raise
-
-    finally:
-
-        polling_tasks.pop(
-            transfer_key,
-            None,
-        )
+            await asyncio.sleep(5)
 
 
-# =========================================================
-# REGISTER LISTENER
-# =========================================================
+# -------------------- register listener -----------------
 
 
 async def register_listener(
@@ -364,130 +212,30 @@ async def register_listener(
     transfer_id=None,
 ):
 
-    key = (
-        source_channel,
-        target_channel,
+    source_entity = await client.get_entity(source_channel)
+
+    target_entity = await client.get_entity(target_channel)
+
+    transfer_key = (
+        source_entity.id,
+        target_entity.id,
     )
 
-    # =====================================================
-    # DUPLICATE LISTENER
-    # =====================================================
-
-    if key in registered_listeners:
-
-        print(f"⚠️ ALREADY REGISTERED: " f"{source_channel} -> " f"{target_channel}")
-
+    if transfer_key in polling_tasks:
         return
 
-    # =====================================================
-    # GET ENTITIES
-    # =====================================================
-
-    try:
-
-        source_entity = await client.get_entity(source_channel)
-
-        target_entity = await client.get_entity(target_channel)
-
-        source_input = await client.get_input_entity(source_entity)
-
-        target_input = await client.get_input_entity(target_entity)
-
-        source_id = source_entity.id
-        target_id = target_entity.id
-
-        transfer_key = (
-            source_id,
-            target_id,
+    task = asyncio.create_task(
+        polling_worker(
+            client=client,
+            source_entity=source_entity,
+            target_entity=target_entity,
+            transfer_id=transfer_id,
         )
-
-    except Exception as e:
-
-        print(f"❌ ENTITY ERROR: " f"{type(e).name}: {e}")
-
-        return
-
-    # =====================================================
-    # EVENT
-    # =====================================================
-
-    async def new_post(event):
-
-        try:
-
-            message = event.message
-
-            if not message:
-                return
-
-            message_id = message.id
-
-            # -----------------------------------------
-            # DUPLICATE CHECK
-            # -----------------------------------------
-
-            last_id = last_messages.get(
-                transfer_key,
-                0,
-            )
-
-            if message_id <= last_id:
-                return
-
-            # -----------------------------------------
-            # SAVE ID
-            # -----------------------------------------
-
-            last_messages[transfer_key] = message_id
-
-            print(f"📩 EVENT MESSAGE: " f"{message_id}")
-
-            await transfer_message(
-                client=client,
-                message=message,
-                target_entity=target_input,
-                transfer_id=transfer_id,
-            )
-
-        except Exception as e:
-
-            print(f"❌ EVENT ERROR: " f"{type(e).name}: {e}")
-
-    # =====================================================
-    # REGISTER EVENT WITH CHAT FILTER
-    # =====================================================
-
-    client.add_event_handler(
-        new_post,
-        events.NewMessage(chats=source_input),
     )
 
-    event_handlers[transfer_key] = new_post
+    polling_tasks[transfer_key] = task
 
-    # =====================================================
-    # REGISTER LISTENER
-    # =====================================================
-
-    registered_listeners.add(key)
-
-    # =====================================================
-    # START ONLY ONE POLLER
-    # =====================================================
-
-    if transfer_key not in polling_tasks:
-
-        task = asyncio.create_task(
-            polling_worker(
-                client=client,
-                source_entity=source_entity,
-                target_entity=target_input,
-                transfer_id=transfer_id,
-            )
-        )
-
-        polling_tasks[transfer_key] = task
-
-    print(f"✅ LISTENER REGISTERED: " f"{source_channel} -> " f"{target_channel}")
+    print(f"✅ Registered polling: " f"{source_channel} -> {target_channel}")
 
 
 # =========================================================
