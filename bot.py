@@ -82,7 +82,18 @@ from conversation import State
 
 async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    state = context.user_data.get("state", State.NONE)
+    if update.effective_user is None:
+        return
+
+    if update.message is None:
+        return
+
+    user_data = context.user_data
+
+    if user_data is None:
+        return
+
+    state = user_data.get("state", State.NONE)
 
     # مراحل گفتگو
     if state == State.SOURCE_CHANNEL:
