@@ -54,31 +54,21 @@ def training_keyboard():
                 InlineKeyboardButton(
                     "⚠️ نکات مهم",
                     callback_data="training_rules",
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     "📢 اتصال کانال‌ها",
                     callback_data="training_connect",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "⚙️ تنظیمات ارسال پست",
-                    callback_data="training_settings",
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(
                     "✂️ حذف خطوط آخر",
                     callback_data="training_delete_lines",
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     "✍️ افزودن خطوط آخر",
                     callback_data="training_add_lines",
-                )
+                ),
             ],
         ]
     )
@@ -110,9 +100,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = ReplyKeyboardMarkup(
         [
-            ["📢 افزودن کانال"],
-            ["📋 کانال‌های ثبت شده"],
-            ["📚 آموزش استفاده"],
+            [
+                "📢 افزودن کانال",
+                "📋 کانال‌های ثبت شده",
+            ],
+            [
+                "📚 آموزش استفاده",
+            ],
         ],
         resize_keyboard=True,
     )
@@ -173,15 +167,6 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "training_connect":
 
         await training_connect(
-            update,
-            context,
-        )
-
-        return
-
-    if query.data == "training_settings":
-
-        await training_settings(
             update,
             context,
         )
@@ -255,33 +240,6 @@ async def training_connect(update, context):
         "کانالی که می‌خواهید پست‌ها در آن ارسال شود.\n\n"
         "بعد از اتصال، ربات پست‌های جدید کانال مبدا را دریافت کرده "
         "و در کانال مقصد ارسال می‌کند. ✅",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🔙 بازگشت به آموزش", callback_data="training_back"
-                    )
-                ]
-            ]
-        ),
-        parse_mode="HTML",
-    )
-
-
-# --------------------- training settings -------------------
-
-
-async def training_settings(update, context):
-
-    query = update.callback_query
-
-    await query.edit_message_text(
-        "<b>⚙️ تنظیمات ارسال پست</b>\n\n"
-        "در این بخش می‌توانید نحوه ارسال پست‌ها از کانال مبدا "
-        "به کانال مقصد را شخصی‌سازی کنید.\n\n"
-        "با استفاده از تنظیمات می‌توانید متن پست‌ها را تغییر دهید، "
-        "بخشی از متن را حذف کنید یا متن دلخواه خودتان را به پست‌ها اضافه کنید.\n\n"
-        "برای تنظیم هر بخش، از گزینه‌های مربوط به تنظیمات استفاده کنید. ✅",
         reply_markup=InlineKeyboardMarkup(
             [
                 [

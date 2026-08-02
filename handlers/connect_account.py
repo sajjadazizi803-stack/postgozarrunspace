@@ -364,13 +364,17 @@ async def toggle_transfer_callback(update: Update, context: ContextTypes.DEFAULT
             InlineKeyboardButton(
                 "⏸ توقف" if enabled else "▶️ فعال",
                 callback_data=f"toggle_{transfer_id}",
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 "🗑 حذف انتقال",
                 callback_data=f"delete_{transfer_id}",
-            )
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "⚙️ تنظیمات",
+                callback_data=f"settings_{transfer_id}",
+            ),
         ],
         [
             InlineKeyboardButton(
