@@ -177,6 +177,12 @@ async def receive_source_channel(
 
         target_channel = transfer[2]
 
+        # بروزرسانی مبدا در دیتابیس
+        update_transfer_source(
+            transfer_id,
+            source_channel,
+        )
+
         # ---------------------------------------------
         # ساخت Listener جدید
         # ---------------------------------------------
