@@ -16,6 +16,7 @@ from telegram import ChatMemberAdministrator
 from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.errors import UserNotParticipantError
 from telethon.tl import functions
+from database import update_transfer_target
 
 from database import (
     delete_transfer,
@@ -249,12 +250,9 @@ async def receive_source_channel(
     context.user_data["state"] = State.TARGET_CHANNEL
 
     await update.message.reply_text(f"""✅ اکانت عضو کانال مبدا شد.
-
 📥 {source_channel}
-
 حالا آیدی کانال مقصد را ارسال کنید.
-مثال:
-@target_channel""")
+مثال: @target_channel""")
 
 
 # =========================
@@ -386,7 +384,6 @@ async def receive_target_channel(
 📤 مقصد جدید: {target_channel}
 
 حالا:
-
 1- ربات را ادمین مقصد کن.
 2- اکانت @egpora_e3 را هم ادمین مقصد کن.
 
@@ -1397,8 +1394,6 @@ async def finish_change_target(
 
     source_channel = context.user_data.get("pending_source")
     target_channel = context.user_data.get("pending_target")
-    old_target = context.user_data.get("old_target")
-    enabled = context.user_data.get("enabled")
 
     if not transfer_id:
         await query.edit_message_text("❌ اطلاعات پیدا نشد.")
@@ -1416,7 +1411,6 @@ async def finish_change_target(
     except Exception:
 
         await query.edit_message_text("❌ ابتدا ربات را داخل مقصد ادمین کن.")
-
         return
 
     if bot_member.status not in (
@@ -1425,29 +1419,28 @@ async def finish_change_target(
     ):
 
         await query.edit_message_text("❌ ربات هنوز ادمین مقصد نیست.")
-
         return
 
     try:
 
-        await tg_client(
+        participant = await tg_client(
             GetParticipantRequest(
                 target_channel,
                 "me",
             )
         )
 
+        if not getattr(participant.participant, "admin_rights", None):
+            await query.edit_message_text("❌ اکانت هنوز ادمین مقصد نیست.")
+            return
+
     except Exception:
 
-        await query.edit_message_text("❌ اکانت داخل مقصد پیدا نشد.")
-
+        await query.edit_message_text("❌ اکانت هنوز ادمین مقصد نیست.")
         return
 
-    delete_transfer(transfer_id)
-
-    await add_new_transfer(
-        query.from_user.id,
-        source_channel,
+    update_transfer_target(
+        transfer_id,
         target_channel,
     )
 
@@ -1455,13 +1448,10 @@ async def finish_change_target(
 
     await query.edit_message_text(f"""✅ مقصد با موفقیت تغییر کرد.
 
-📥 مبدا:
-{source_channel}
+📥 مبدا: {source_channel}
+📤 مقصد: {target_channel}
 
-📤 مقصد:
-{target_channel}
-
-🚀 انتقال همچنان فعال است.""")
+🚀 انتقال بدون توقف ادامه پیدا کرد.""")
 
 
 # -------------------- change target callback --------------------
@@ -1589,8 +1579,7 @@ async def confirm_target_callback(
     await query.edit_message_text(
         """✅ اکانت با موفقیت از مقصد قبلی خارج شد.
 
-📢 <b>حالا مقصد جدید را ارسال کن.</b>
-
+📢 <b>حالا مقصد جدید رو ارسال کن.</b>
 مثال: <code>@new_target</code>""",
         parse_mode="HTML",
     )
