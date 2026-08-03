@@ -350,7 +350,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # پاسخ پشتیبانی (ادمین)
     # ------------------------
 
-    text = update.message.text
+    text = update.message.text if update.message.text else ""
 
     MAIN_BUTTONS = [
         "📢 افزودن کانال",
@@ -560,7 +560,7 @@ def create_bot():
 
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
+            filters.ALL & ~filters.COMMAND,
             text_buttons,
         )
     )
