@@ -1280,13 +1280,8 @@ async def finish_change_target(
         await query.edit_message_text("❌ اکانت هنوز ادمین مقصد نیست.")
         return
 
-    delete_transfer(
+    update_transfer_target(
         transfer_id,
-    )
-
-    new_transfer_id = add_new_transfer(
-        query.from_user.id,
-        source_channel,
         target_channel,
     )
 
