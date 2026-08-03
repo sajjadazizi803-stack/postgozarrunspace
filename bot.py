@@ -54,6 +54,7 @@ from handlers.connect_account import (
     change_target_callback,
     confirm_target_callback,
     cancel_target_callback,
+    finish_change_target,
 )
 
 # ---------------------- clear waiting state --------------------
@@ -654,6 +655,11 @@ def create_bot():
             pattern=r"^cancel_target_\d+$",
         )
     )
+
+    CallbackQueryHandler(
+        finish_change_target,
+        pattern="^finish_change_target$",
+    ),
 
     app.add_handler(CallbackQueryHandler(buttons))
     app.bot_data["tg_client"] = tg_client
