@@ -30,42 +30,48 @@ async def contact_support_callback(update: Update, context: ContextTypes.DEFAULT
 
 async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    user = update.effective_user
-    message = update.effective_message
+    try:
 
-    header = (
-        f"📩 پیام جدید پشتیبانی\n\n"
-        f"👤 نام: {user.full_name}\n"
-        f"🆔 آیدی: {user.id}\n"
-        f"📎 یوزرنیم: @{user.username if user.username else '-'}"
-    )
+        user = update.effective_user
+        message = update.effective_message
 
-    if message.text:
-
-        admin_msg = await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"{header}\n\n{message.text}",
-            parse_mode="Markdown",
+        header = (
+            f"📩 پیام جدید پشتیبانی\n\n"
+            f"👤 نام: {user.full_name}\n"
+            f"🆔 آیدی: {user.id}\n"
+            f"📎 یوزرنیم: @{user.username if user.username else '-'}"
         )
 
-    else:
+        if message.text:
 
-        admin_msg = await message.copy(
-            chat_id=ADMIN_ID,
-            caption=(f"{header}\n\n{message.caption}" if message.caption else header),
-            parse_mode="Markdown",
+            admin_msg = await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=f"{header}\n\n{message.text}",
+            )
+
+        else:
+
+            admin_msg = await message.copy(
+                chat_id=ADMIN_ID,
+                caption=f"{header}\n\n{message.caption or ''}",
+            )
+
+        add_support_message(
+            admin_msg.message_id,
+            user.id,
         )
 
-    add_support_message(
-        admin_msg.message_id,
-        user.id,
-    )
+        await message.reply_text("✅ پیام شما برای پشتیبانی ارسال شد.")
 
-    await message.reply_text("✅ پیام شما برای پشتیبانی ارسال شد.")
+        context.user_data["state"] = State.NONE
 
-    context.user_data["state"] = State.NONE
+        return ConversationHandler.END
 
-    return ConversationHandler.END
+    except Exception as e:
+
+        print("SUPPORT ERROR:", e)
+
+        await update.message.reply_text(f"❌ خطا:\n{e}")
 
 
 # ------------------- admin reply --------------------
