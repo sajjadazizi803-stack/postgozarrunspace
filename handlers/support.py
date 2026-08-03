@@ -82,6 +82,12 @@ async def admin_reply(
     context: ContextTypes.DEFAULT_TYPE,
 ):
 
+    if update.effective_user is None:
+        return
+
+    if update.effective_message is None:
+        return
+
     if update.effective_user.id != ADMIN_ID:
         return
 
@@ -90,27 +96,35 @@ async def admin_reply(
     if not message.reply_to_message:
         return
 
-    user_id = get_support_user(message.reply_to_message.message_id)
+    user_id = get_support_user(
+        message.reply_to_message.message_id,
+    )
 
     if not user_id:
         return
 
-    if message.text:
+    try:
 
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=f"💬 پاسخ پشتیبانی:\n\n{message.text}",
-        )
+        if message.text:
 
-    else:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"💬 پاسخ پشتیبانی:\n\n{message.text}",
+            )
 
-        await message.copy(
-            chat_id=user_id,
-            caption=(
-                f"💬 پاسخ پشتیبانی\n\n{message.caption}"
-                if message.caption
-                else "💬 پاسخ پشتیبانی"
-            ),
-        )
+        else:
 
-    await message.reply_text("✅ پاسخ برای کاربر ارسال شد.")
+            await message.copy(
+                chat_id=user_id,
+                caption=(
+                    f"💬 پاسخ پشتیبانی\n\n{message.caption}"
+                    if message.caption
+                    else "💬 پاسخ پشتیبانی"
+                ),
+            )
+
+        await message.reply_text("✅ پاسخ برای کاربر ارسال شد.")
+
+    except Exception as e:
+
+        await message.reply_text(f"❌ ارسال پاسخ انجام نشد.\n\n{e}")
