@@ -755,10 +755,9 @@ async def transfer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    transfer_id = int(query.data.split("_")[1])
-
+    parts = query.data.split("_")
+    transfer_id = int(parts[-1])
     transfers = get_user_transfers(query.from_user.id)
-
     transfer = None
 
     for item in transfers:
