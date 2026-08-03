@@ -7,7 +7,8 @@ from database import (
     add_support_message,
     get_support_user,
 )
-from config import ADMIN_ID, State
+from config import ADMIN_ID
+from conversation import State
 
 support_messages = {}
 
