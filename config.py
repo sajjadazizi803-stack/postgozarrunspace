@@ -14,3 +14,5 @@ API_HASH = os.getenv("API_HASH")
 SESSION_FOLDER = "sessions"
 
 SUPPORT = "support"
+
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
