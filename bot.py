@@ -656,10 +656,12 @@ def create_bot():
         )
     )
 
-    CallbackQueryHandler(
-        finish_change_target,
-        pattern="^finish_change_target$",
-    ),
+    app.add_handler(
+        CallbackQueryHandler(
+            finish_change_target,
+            pattern="^finish_change_target$",
+        )
+    )
 
     app.add_handler(CallbackQueryHandler(buttons))
     app.bot_data["tg_client"] = tg_client
