@@ -38,7 +38,6 @@ async def stop_transfer_listener(
     try:
 
         source_entity = await tg_client.get_entity(source_channel)
-
         target_entity = await tg_client.get_entity(target_channel)
 
         key = (
@@ -46,13 +45,9 @@ async def stop_transfer_listener(
             target_entity.id,
         )
 
-        task = polling_tasks.pop(
-            key,
-            None,
-        )
+        task = polling_tasks.pop(key, None)
 
         if task:
-
             task.cancel()
 
             try:
@@ -60,10 +55,21 @@ async def stop_transfer_listener(
             except asyncio.CancelledError:
                 pass
 
+        # پاک کردن event listener
+        handler = event_handlers.pop(key, None)
+
+        if handler:
+            try:
+                tg_client.remove_event_handler(handler)
+            except Exception:
+                pass
+
+        registered_listeners.discard(key)
+
         last_messages.pop(key, None)
         channel_pts.pop(key, None)
 
-        print(f"🛑 OLD LISTENER STOPPED: " f"{source_channel} -> {target_channel}")
+        print(f"🛑 LISTENER STOPPED: {source_channel} -> {target_channel}")
 
         return True
 
@@ -413,6 +419,18 @@ async def add_new_transfer(
 ):
 
     transfer_id = None
+
+    source_entity = await tg_client.get_entity(source_channel)
+    target_entity = await tg_client.get_entity(target_channel)
+
+    key = (
+        source_entity.id,
+        target_entity.id,
+    )
+
+    if key in polling_tasks or key in registered_listeners:
+        print(f"⚠️ LISTENER ALREADY EXISTS: {source_channel} -> {target_channel}")
+        return
 
     # -----------------------------------------------------
     # پیدا کردن ID انتقال تازه ثبت شده
