@@ -35,6 +35,12 @@ from handlers.support import (
     contact_support_callback,
 )
 
+from handlers.connect_account import (
+    change_source_callback,
+    confirm_source_callback,
+    cancel_source_callback,
+)
+
 import config
 from telegram_client import tg_client
 from handlers.connect_account import registered_channels
@@ -43,6 +49,12 @@ from database import set_remove_last_lines
 from handlers.connect_account import append_lines_setting
 from database import set_append_last_lines
 from config import ADMIN_ID
+
+from handlers.connect_account import (
+    change_target_callback,
+    confirm_target_callback,
+    cancel_target_callback,
+)
 
 # ---------------------- clear waiting state --------------------
 
@@ -213,7 +225,7 @@ async def training_rules(update, context):
     await query.edit_message_text(
         "<b>⚠️ نکات مهم</b>\n\n"
         "• بعد از اینکه کانال مقصد رو وارد کردی، اکانت متصل به ربات به صورت خودکار عضو کانال مقصد میشه.\n\n"
-        "فقط کافیه اونو ادمین کنی:\n"
+        "فقط کافیه اونو ادمین مقصد کنی:\n"
         "<code>@egpora_e3</code>\n\n"
         "• ربات هم باید داخل کانال مقصد ادمین باشه و اجازه ارسال پیام داشته باشه.\n\n"
         "• وقتی کانال مبدا و مقصد رو وارد کردی و اکانت و ربات رو ادمین کردی، روی دکمه <b>«✅ انجام شد»</b> بزن.\n\n"
@@ -599,6 +611,48 @@ def create_bot():
             admin_reply,
         ),
         group=100,
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            change_source_callback,
+            pattern=r"^change_source_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            confirm_source_callback,
+            pattern=r"^confirm_source_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            cancel_source_callback,
+            pattern=r"^cancel_source_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            change_target_callback,
+            pattern=r"^change_target_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            confirm_target_callback,
+            pattern=r"^confirm_target_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            cancel_target_callback,
+            pattern=r"^cancel_target_\d+$",
+        )
     )
 
     app.add_handler(CallbackQueryHandler(buttons))

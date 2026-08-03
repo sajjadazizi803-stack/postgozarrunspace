@@ -28,6 +28,56 @@ last_messages = {}
 channel_pts = {}
 
 
+# ------------------- stop transfer listener --------------------
+
+
+async def stop_transfer_listener(
+    source_channel,
+    target_channel,
+):
+    try:
+
+        source_entity = await tg_client.get_entity(source_channel)
+
+        target_entity = await tg_client.get_entity(target_channel)
+
+        key = (
+            source_entity.id,
+            target_entity.id,
+        )
+
+        task = polling_tasks.pop(
+            key,
+            None,
+        )
+
+        if task:
+
+            task.cancel()
+
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        last_messages.pop(key, None)
+        channel_pts.pop(key, None)
+
+        print(f"🛑 OLD LISTENER STOPPED: " f"{source_channel} -> {target_channel}")
+
+        return True
+
+    except Exception as e:
+
+        print(
+            "❌ STOP LISTENER ERROR:",
+            type(e).__name__,
+            str(e),
+        )
+
+        return False
+
+
 # ------------------- remove last lines --------------------
 
 

@@ -2,7 +2,10 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from conversation import State
 from database import add_transfer
-from listener import add_new_transfer
+from listener import (
+    add_new_transfer,
+    stop_transfer_listener,
+)
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import jdatetime
 from datetime import datetime
@@ -12,6 +15,7 @@ from telethon.errors import UserAlreadyParticipantError
 from telegram import ChatMemberAdministrator
 from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.errors import UserNotParticipantError
+from telethon.tl import functions
 
 from database import (
     delete_transfer,
@@ -20,8 +24,12 @@ from database import (
     get_remove_last_lines,
     set_append_last_lines,
     get_append_last_lines,
+    update_transfer_source,
+    update_transfer_target,
+    get_transfer_by_id,
 )
 
+change_target_states = {}
 # =========================
 # connect account
 # =========================
@@ -29,13 +37,58 @@ from database import (
 
 async def connect_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    user_id = update.effective_user.id
+
+    # ==========================================
+    # بررسی اینکه کاربر قبلاً انتقال دارد یا نه
+    # ==========================================
+
+    transfers = get_user_transfers(user_id)
+
+    if transfers:
+
+        text = (
+            "⚠️ <b>شما قبلاً یک انتقال ثبت کرده‌اید.</b>\n\n"
+            "برای تغییر کانال مبدا یا مقصد، "
+            "به بخش «📋 کانال‌های ثبت شده» بروید "
+            "و از همان‌جا کانال موردنظر را تغییر دهید."
+        )
+
+        if update.callback_query:
+
+            await update.callback_query.answer()
+
+            await update.callback_query.edit_message_text(
+                text,
+                parse_mode="HTML",
+            )
+
+        else:
+
+            await update.message.reply_text(
+                text,
+                parse_mode="HTML",
+            )
+
+        context.user_data["state"] = State.NONE
+
+        return
+
+    # ==========================================
+    # شروع ثبت انتقال جدید
+    # ==========================================
+
     if update.callback_query:
+
         await update.callback_query.answer()
+
         await update.callback_query.edit_message_text(
             """📢 لطفاً لینک یا یوزرنیم کانال مبدا را ارسال کنید.
 مثال: @source_channel"""
         )
+
     else:
+
         await update.message.reply_text(
             """📢 لطفاً لینک یا یوزرنیم کانال مبدا را ارسال کنید.
 مثال: @source_channel"""
@@ -49,32 +102,163 @@ async def connect_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =========================
 
 
-async def receive_source_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def receive_source_channel(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
 
     if context.user_data.get("state") != State.SOURCE_CHANNEL:
         return
 
     source_channel = update.message.text.strip()
 
+    # =====================================================
+    # حالت تغییر مبدا
+    # =====================================================
+
+    if context.user_data.get("changing_source"):
+
+        transfer_id = context.user_data.get("change_source_transfer_id")
+
+        if not transfer_id:
+
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text("❌ اطلاعات تغییر مبدا پیدا نشد.")
+
+            return
+
+        # ---------------------------------------------
+        # عضو شدن در مبدا جدید
+        # ---------------------------------------------
+
+        try:
+
+            try:
+
+                await tg_client(JoinChannelRequest(source_channel))
+
+            except UserAlreadyParticipantError:
+
+                pass
+
+        except Exception as e:
+
+            await update.message.reply_text(
+                "❌ عضویت اکانت در مبدا جدید انجام نشد.\n\n" f"خطا: {e}"
+            )
+
+            return
+
+        # ---------------------------------------------
+        # ذخیره مبدا جدید
+        # ---------------------------------------------
+
+        update_transfer_source(
+            transfer_id,
+            source_channel,
+        )
+
+        # ---------------------------------------------
+        # گرفتن انتقال جدید
+        # ---------------------------------------------
+
+        transfers = get_user_transfers(update.effective_user.id)
+
+        transfer = None
+
+        for item in transfers:
+
+            if item[0] == transfer_id:
+
+                transfer = item
+                break
+
+        if transfer is None:
+
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text("❌ انتقال پیدا نشد.")
+
+            return
+
+        target_channel = transfer[2]
+
+        # ---------------------------------------------
+        # ساخت Listener جدید
+        # ---------------------------------------------
+
+        if transfer[3]:
+
+            await add_new_transfer(
+                update.effective_user.id,
+                source_channel,
+                target_channel,
+            )
+
+        # ---------------------------------------------
+        # پاک کردن وضعیت
+        # ---------------------------------------------
+
+        context.user_data.pop(
+            "change_source_transfer_id",
+            None,
+        )
+
+        context.user_data.pop(
+            "changing_source",
+            None,
+        )
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text(
+            f"""✅ <b>مبدا با موفقیت تغییر کرد.</b>
+
+📥 مبدا جدید:
+{source_channel}
+
+📤 مقصد:
+{target_channel}
+
+📊 وضعیت:
+{"🟢 فعال" if transfer[3] else "🔴 متوقف"}""",
+            parse_mode="HTML",
+        )
+
+        return
+
+    # =====================================================
+    # ثبت عادی مبدا
+    # =====================================================
+
     try:
 
         try:
+
             await tg_client(JoinChannelRequest(source_channel))
+
         except UserAlreadyParticipantError:
+
             pass
 
     except Exception:
 
         await update.message.reply_text("❌ عضویت در کانال مبدا انجام نشد.")
+
         return
 
     context.user_data["source_channel"] = source_channel
+
     context.user_data["state"] = State.TARGET_CHANNEL
 
     await update.message.reply_text(f"""✅ اکانت عضو کانال مبدا شد.
+
 📥 {source_channel}
+
 حالا آیدی کانال مقصد را ارسال کنید.
-مثال: @target_channel""")
+مثال:
+@target_channel""")
 
 
 # =========================
@@ -82,12 +266,378 @@ async def receive_source_channel(update: Update, context: ContextTypes.DEFAULT_T
 # =========================
 
 
-async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def receive_target_channel(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
 
     if context.user_data.get("state") != State.TARGET_CHANNEL:
         return
 
     target_channel = update.message.text.strip()
+
+    # =====================================================
+    # CHANGE TARGET
+    # =====================================================
+
+    if context.user_data.get("changing_target"):
+
+        transfer_id = context.user_data.get("change_target_transfer_id")
+
+        if not transfer_id:
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text("❌ اطلاعات تغییر مقصد پیدا نشد.")
+
+            return
+
+        transfer = get_transfer_by_id(transfer_id)
+
+        if not transfer:
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text("❌ انتقال پیدا نشد.")
+
+            return
+
+        source_channel = transfer["source_channel"]
+        old_target = transfer["target_channel"]
+        enabled = bool(transfer["enabled"])
+
+        # =================================================
+        # STOP OLD LISTENER
+        # =================================================
+
+        try:
+            await stop_transfer_listener(
+                source_channel,
+                old_target,
+            )
+
+        except Exception as e:
+            print(
+                "STOP OLD LISTENER ERROR:",
+                type(e).__name__,
+                str(e),
+            )
+
+        # =================================================
+        # JOIN NEW TARGET
+        # =================================================
+
+        try:
+
+            try:
+                await tg_client(
+                    JoinChannelRequest(
+                        target_channel,
+                    )
+                )
+
+            except UserAlreadyParticipantError:
+                pass
+
+        except Exception as e:
+
+            if enabled:
+                try:
+                    await add_new_transfer(
+                        update.effective_user.id,
+                        source_channel,
+                        old_target,
+                    )
+                except Exception as restore_error:
+                    print(
+                        "RESTORE OLD TARGET ERROR:",
+                        type(restore_error).name,
+                        str(restore_error),
+                    )
+
+            await update.message.reply_text(
+                "❌ عضویت در مقصد جدید انجام نشد.\n\n" f"خطا: {e}"
+            )
+
+            return
+
+        # =================================================
+        # GET NEW TARGET
+        # =================================================
+
+        try:
+
+            entity = await tg_client.get_entity(target_channel)
+
+        except Exception as e:
+
+            try:
+                await tg_client(
+                    functions.channels.LeaveChannelRequest(
+                        channel=target_channel,
+                    )
+                )
+            except Exception:
+                pass
+
+            if enabled:
+                try:
+                    await add_new_transfer(
+                        update.effective_user.id,
+                        source_channel,
+                        old_target,
+                    )
+                except Exception as restore_error:
+                    print(
+                        "RESTORE OLD TARGET ERROR:",
+                        type(restore_error).name,
+                        str(restore_error),
+                    )
+
+            await update.message.reply_text(
+                "❌ امکان دریافت اطلاعات مقصد جدید وجود ندارد.\n\n" f"خطا: {e}"
+            )
+
+            return
+
+        # =================================================
+        # CHECK ADMIN
+        # =================================================
+
+        try:
+            participant = await tg_client(
+                functions.channels.GetParticipantRequest(
+                    channel=entity,
+                    participant="me",
+                )
+            )
+
+        except Exception as e:
+
+            try:
+                await tg_client(
+                    functions.channels.LeaveChannelRequest(
+                        channel=entity,
+                    )
+                )
+            except Exception:
+                pass
+
+            if enabled:
+                try:
+                    await add_new_transfer(
+                        update.effective_user.id,
+                        source_channel,
+                        old_target,
+                    )
+                except Exception as restore_error:
+                    print(
+                        "RESTORE OLD TARGET ERROR:",
+                        type(restore_error).name,
+                        str(restore_error),
+                    )
+
+            await update.message.reply_text(
+                "❌ امکان بررسی دسترسی اکانت در مقصد جدید وجود ندارد.\n\n" f"خطا: {e}"
+            )
+
+            return
+
+        admin_rights = getattr(
+            participant.participant,
+            "admin_rights",
+            None,
+        )
+
+        if not admin_rights:
+
+            try:
+                await tg_client(
+                    functions.channels.LeaveChannelRequest(
+                        channel=entity,
+                    )
+                )
+            except Exception:
+                pass
+
+            if enabled:
+                try:
+                    await add_new_transfer(
+                        update.effective_user.id,
+                        source_channel,
+                        old_target,
+                    )
+                except Exception as restore_error:
+                    print(
+                        "RESTORE OLD TARGET ERROR:",
+                        type(restore_error).name,
+                        str(restore_error),
+                    )
+
+            await update.message.reply_text("❌ اکانت باید در مقصد جدید ادمین باشد.")
+
+            return
+
+        # =================================================
+        # UPDATE DATABASE
+        # =================================================
+
+        try:
+
+            update_transfer_target(
+                transfer_id,
+                target_channel,
+            )
+
+        except Exception as e:
+
+            try:
+                await tg_client(
+                    functions.channels.LeaveChannelRequest(
+                        channel=entity,
+                    )
+                )
+            except Exception:
+                pass
+
+            if enabled:
+                try:
+                    await add_new_transfer(
+                        update.effective_user.id,
+                        source_channel,
+                        old_target,
+                    )
+                except Exception as restore_error:
+                    print(
+                        "RESTORE OLD TARGET ERROR:",
+                        type(restore_error).name,
+                        str(restore_error),
+                    )
+
+            await update.message.reply_text(
+                "❌ ذخیره مقصد جدید انجام نشد.\n\n" f"خطا: {e}"
+            )
+
+            return
+
+        # =================================================
+        # START NEW LISTENER
+        # =================================================
+
+        if enabled:
+
+            try:
+
+                await add_new_transfer(
+                    update.effective_user.id,
+                    source_channel,
+                    target_channel,
+                )
+
+            except Exception as e:
+
+                # برگرداندن دیتابیس
+
+                try:
+                    update_transfer_target(
+                        transfer_id,
+                        old_target,
+                    )
+                except Exception:
+                    pass
+
+                # خروج از مقصد جدید
+
+                try:
+                    await tg_client(
+                        functions.channels.LeaveChannelRequest(
+                            channel=entity,
+                        )
+                    )
+                except Exception:
+                    pass
+
+                # برگرداندن Listener قبلی
+
+                try:
+                    await add_new_transfer(
+                        update.effective_user.id,
+                        source_channel,
+                        old_target,
+                    )
+
+                except Exception as restore_error:
+                    print(
+                        "RESTORE LISTENER ERROR:",
+                        type(restore_error).name,
+                        str(restore_error),
+                    )
+
+                await update.message.reply_text(
+                    "❌ ساخت انتقال برای مقصد جدید انجام نشد.\n\n" f"خطا: {e}"
+                )
+
+                return
+
+        # =================================================
+        # LEAVE OLD TARGET
+        # =================================================
+
+        try:
+
+            old_target_entity = await tg_client.get_entity(old_target)
+
+            await tg_client(
+                functions.channels.LeaveChannelRequest(
+                    channel=old_target_entity,
+                )
+            )
+
+        except Exception as e:
+
+            print(
+                "LEAVE OLD TARGET ERROR:",
+                type(e).__name__,
+                str(e),
+            )
+
+        # =================================================
+        # CLEAN STATE
+        # =================================================
+
+        context.user_data.pop(
+            "change_target_transfer_id",
+            None,
+        )
+
+        context.user_data.pop(
+            "changing_target",
+            None,
+        )
+
+        context.user_data["state"] = State.NONE
+
+        # =================================================
+        # SUCCESS
+        # =================================================
+
+        await update.message.reply_text(
+            f"""✅ <b>مقصد با موفقیت تغییر کرد.</b>
+
+📥 مبدا:
+{source_channel}
+
+📤 مقصد جدید:
+{target_channel}
+
+📊 وضعیت:
+{"🟢 فعال" if enabled else "🔴 متوقف"}""",
+            parse_mode="HTML",
+        )
+
+        return
+
+    # =====================================================
+    # CREATE NEW TRANSFER
+    # =====================================================
 
     source_channel = context.user_data.get("source_channel")
 
@@ -99,14 +649,36 @@ async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_T
 
         return
 
+    # =================================================
+    # JOIN TARGET
+    # =================================================
+
     try:
 
-        await tg_client(JoinChannelRequest(target_channel))
+        try:
+            await tg_client(
+                JoinChannelRequest(
+                    target_channel,
+                )
+            )
 
-    except:
-        pass
+        except UserAlreadyParticipantError:
+            pass
+
+    except Exception as e:
+
+        await update.message.reply_text(
+            "❌ عضویت اکانت در کانال مقصد انجام نشد.\n\n" f"خطا: {e}"
+        )
+
+        return
+
+    # =================================================
+    # SAVE PENDING TRANSFER
+    # =================================================
 
     context.user_data["pending_source"] = source_channel
+
     context.user_data["pending_target"] = target_channel
 
     keyboard = [
@@ -125,12 +697,12 @@ async def receive_target_channel(update: Update, context: ContextTypes.DEFAULT_T
 
 📥 مبدا: {source_channel}
 📤 مقصد: {target_channel}
-حالا: 
 
-1- ربات رو ادمین کانال مقصد کنید
-2- اکانت رو هم ادمین چنل کنید
+حالا:
 
-بعد روی دکمه زیر بزنید:""",
+1- ربات را ادمین مقصد کنید.
+2- اکانت را نیز ادمین مقصد کنید.
+سپس روی دکمه زیر بزنید:""",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -230,15 +802,25 @@ async def transfer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [
             InlineKeyboardButton(
+                "🔄 تغییر مبدا",
+                callback_data=f"change_source_{transfer_id}",
+            ),
+            InlineKeyboardButton(
+                "🔄 تغییر مقصد",
+                callback_data=f"change_target_{transfer_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
                 "⚙️ تنظیمات",
                 callback_data=f"settings_{transfer_id}",
-            )
+            ),
         ],
         [
             InlineKeyboardButton(
                 "🔙 بازگشت",
                 callback_data="registered_channels",
-            )
+            ),
         ],
     ]
 
@@ -254,6 +836,165 @@ async def transfer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📊 وضعیت: {status}
 """,
         reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+# -------------------- change source callback --------------------
+
+
+async def change_source_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "✅ بله",
+                callback_data=f"confirm_source_{transfer_id}",
+            ),
+            InlineKeyboardButton(
+                "❌ نه",
+                callback_data=f"cancel_source_{transfer_id}",
+            ),
+        ]
+    ]
+
+    await query.edit_message_text(
+        """⚠️ <b>تغییر کانال مبدا</b>
+
+مطمئنی می‌خوای کانال مبدا فعلی رو تغییر بدی؟
+
+با ادامه دادن:
+• اکانت از مبدا فعلی خارج میشه.
+• بعد باید مبدا جدید رو وارد کنی.
+• انتقال از مبدا جدید ادامه پیدا می‌کنه.
+
+آیا ادامه میدی؟""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# -------------------- cancel source callback --------------------
+
+
+async def cancel_source_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    await transfer_info(
+        update,
+        context,
+    )
+
+
+# -------------------- confirm source callback --------------------
+
+
+async def confirm_source_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    transfers = get_user_transfers(query.from_user.id)
+
+    transfer = None
+
+    for item in transfers:
+
+        if item[0] == transfer_id:
+
+            transfer = item
+            break
+
+    if transfer is None:
+
+        await query.edit_message_text("❌ انتقال پیدا نشد.")
+
+        return
+
+    old_source = transfer[1]
+    target = transfer[2]
+
+    # -----------------------------------------
+    # متوقف کردن Listener قبلی
+    # -----------------------------------------
+
+    stopped = await stop_transfer_listener(
+        old_source,
+        target,
+    )
+
+    if not stopped:
+
+        await query.edit_message_text(
+            "❌ متوقف کردن انتقال قبلی انجام نشد.\n\n" "لطفاً دوباره تلاش کنید."
+        )
+
+        return
+
+    # -----------------------------------------
+    # خروج اکانت از مبدا قبلی
+    # -----------------------------------------
+
+    try:
+
+        old_entity = await tg_client.get_entity(old_source)
+
+        await tg_client(functions.channels.LeaveChannelRequest(old_entity))
+
+    except Exception as e:
+
+        print(
+            "❌ LEAVE SOURCE ERROR:",
+            type(e).__name__,
+            str(e),
+        )
+
+        await query.edit_message_text(
+            "❌ خروج اکانت از مبدا قبلی انجام نشد.\n\n" "تغییر مبدا انجام نشد."
+        )
+
+        return
+
+    # -----------------------------------------
+    # آماده دریافت مبدا جدید
+    # -----------------------------------------
+
+    context.user_data["change_source_transfer_id"] = transfer_id
+
+    context.user_data["state"] = State.SOURCE_CHANNEL
+
+    context.user_data["changing_source"] = True
+
+    await query.edit_message_text(
+        """✅ اکانت با موفقیت از مبدا قبلی خارج شد.
+
+📢 <b>حالا مبدا جدید را ارسال کن.</b>
+
+مثال:
+<code>@new_source</code>""",
+        parse_mode="HTML",
     )
 
 
@@ -296,22 +1037,104 @@ async def back_to_registered_channels(
 # -------------------- bdelete transfer callback --------------------
 
 
-async def delete_transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def delete_transfer_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
 
     query = update.callback_query
     await query.answer()
 
     transfer_id = int(query.data.split("_")[1])
 
+    transfers = get_user_transfers(query.from_user.id)
+
+    transfer = next(
+        (t for t in transfers if t[0] == transfer_id),
+        None,
+    )
+
+    if not transfer:
+
+        await query.edit_message_text("❌ انتقال پیدا نشد.")
+
+        return
+
+    source_channel = transfer[1]
+    target_channel = transfer[2]
+
+    # --------------------------------------------------
+    # توقف Listener / Polling
+    # --------------------------------------------------
+
+    await stop_transfer_listener(
+        source_channel,
+        target_channel,
+    )
+
+    # --------------------------------------------------
+    # خروج از مبدا
+    # --------------------------------------------------
+
+    try:
+
+        source_entity = await tg_client.get_entity(source_channel)
+
+        await tg_client(functions.channels.LeaveChannelRequest(source_entity))
+
+        print(f"✅ LEFT SOURCE: {source_channel}")
+
+    except Exception as e:
+
+        print(
+            "LEAVE SOURCE ERROR:",
+            type(e).__name__,
+            str(e),
+        )
+
+    # --------------------------------------------------
+    # خروج از مقصد
+    # --------------------------------------------------
+
+    try:
+
+        target_entity = await tg_client.get_entity(target_channel)
+
+        await tg_client(functions.channels.LeaveChannelRequest(target_entity))
+
+        print(f"✅ LEFT TARGET: {target_channel}")
+
+    except Exception as e:
+
+        print(
+            "LEAVE TARGET ERROR:",
+            type(e).__name__,
+            str(e),
+        )
+
+    # --------------------------------------------------
+    # حذف انتقال از دیتابیس
+    # --------------------------------------------------
+
     delete_transfer(transfer_id)
 
-    await back_to_registered_channels(update, context)
+    await query.edit_message_text(
+        """✅ <b>انتقال با موفقیت حذف شد.</b>
+
+اکانت از کانال مبدا و مقصد خارج شد.
+
+حالا می‌توانید یک انتقال جدید ثبت کنید.""",
+        parse_mode="HTML",
+    )
 
 
 # -------------------- toggle transfer callback --------------------
 
 
-async def toggle_transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def toggle_transfer_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
 
     query = update.callback_query
     await query.answer()
@@ -320,86 +1143,101 @@ async def toggle_transfer_callback(update: Update, context: ContextTypes.DEFAULT
 
     transfers = get_user_transfers(query.from_user.id)
 
-    for transfer in transfers:
+    transfer = next(
+        (t for t in transfers if t[0] == transfer_id),
+        None,
+    )
 
-        if transfer[0] == transfer_id:
+    if not transfer:
 
-            enabled = transfer[3]
+        await query.edit_message_text("❌ انتقال پیدا نشد.")
+
+        return
+
+    source_channel = transfer[1]
+    target_channel = transfer[2]
+
+    current_enabled = bool(transfer[3])
+
+    # وضعیت جدید
+    new_enabled = not current_enabled
+
+    # ==================================================
+    # توقف انتقال
+    # ==================================================
+
+    if not new_enabled:
+
+        stopped = await stop_transfer_listener(
+            source_channel,
+            target_channel,
+        )
+
+        if not stopped:
+
+            await query.edit_message_text(
+                "❌ متوقف کردن انتقال انجام نشد.\n\n" "لطفاً دوباره تلاش کنید."
+            )
+
+            return
+
+        # ذخیره وضعیت توقف
+        set_transfer_enabled(
+            transfer_id,
+            False,
+        )
+
+    # ==================================================
+    # فعال کردن انتقال
+    # ==================================================
+
+    else:
+
+        try:
+
+            # اول وضعیت را فعال می‌کنیم
+            # چون add_new_transfer باید انتقال فعال را پیدا کند
 
             set_transfer_enabled(
                 transfer_id,
-                0 if enabled else 1,
+                True,
             )
 
-            break
+            # ساخت Listener / Polling جدید
 
-    # دوباره اطلاعات جدید انتقال را بگیر
-    transfers = get_user_transfers(query.from_user.id)
-
-    transfer = None
-
-    for item in transfers:
-        if item[0] == transfer_id:
-            transfer = item
-            break
-
-    if transfer is None:
-        await query.edit_message_text("❌ انتقال پیدا نشد.")
-        return
-
-    source = transfer[1]
-    target = transfer[2]
-    enabled = transfer[3]
-    sent_count = transfer[4]
-    last_send = transfer[5]
-
-    if last_send:
-        try:
-            dt = datetime.strptime(str(last_send), "%Y-%m-%d %H:%M:%S")
-            jalali_date = jdatetime.datetime.fromgregorian(datetime=dt)
-            last_send = jalali_date.strftime("%Y/%m/%d • %H:%M")
-        except Exception:
-            pass
-
-    status = "🟢 فعال" if enabled else "🔴 متوقف"
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "⏸ توقف" if enabled else "▶️ فعال",
-                callback_data=f"toggle_{transfer_id}",
-            ),
-            InlineKeyboardButton(
-                "🗑 حذف",
-                callback_data=f"delete_{transfer_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "⚙️ تنظیمات",
-                callback_data=f"settings_{transfer_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 بازگشت",
-                callback_data="registered_channels",
+            await add_new_transfer(
+                query.from_user.id,
+                source_channel,
+                target_channel,
             )
-        ],
-    ]
 
-    await query.edit_message_text(
-        f"""📡 اطلاعات انتقال
+        except Exception as e:
 
-📥 مبدا: {source}
-📤 مقصد: {target}
+            # اگر ساخت Listener شکست خورد،
+            # انتقال دوباره متوقف شود
 
-📨 تعداد پیام: {sent_count}
-🕒 آخرین انتقال: {last_send if last_send else "هنوز انتقالی انجام نشده"}
+            set_transfer_enabled(
+                transfer_id,
+                False,
+            )
 
-📊 وضعیت: {status}
-""",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+            print(
+                "ACTIVATE ERROR:",
+                type(e).__name__,
+                str(e),
+            )
+
+            await query.edit_message_text("❌ فعال‌سازی انتقال انجام نشد.")
+
+            return
+
+    # ==================================================
+    # نمایش دوباره اطلاعات انتقال
+    # ==================================================
+
+    await transfer_info(
+        update,
+        context,
     )
 
 
@@ -594,3 +1432,166 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📤 مقصد: {target_channel}
 
 🚀 انتقال خودکار فعال شد.""")
+
+
+# -------------------- change target callback --------------------
+
+
+async def change_target_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    transfer = get_transfer_by_id(transfer_id)
+
+    if not transfer:
+
+        await query.edit_message_text("❌ انتقال پیدا نشد.")
+
+        return
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "✅ بله",
+                callback_data=f"confirm_target_{transfer_id}",
+            ),
+            InlineKeyboardButton(
+                "❌ نه",
+                callback_data=f"cancel_target_{transfer_id}",
+            ),
+        ]
+    ]
+
+    await query.edit_message_text(
+        """⚠️ <b>تغییر کانال مقصد</b>
+
+مطمئنی می‌خوای کانال مقصد فعلی رو تغییر بدی؟
+
+با ادامه دادن:
+• اکانت از مقصد فعلی خارج میشه.
+• بعد باید مقصد جدید رو وارد کنی.
+• در صورت فعال بودن انتقال، انتقال روی مقصد جدید ادامه پیدا می‌کنه.
+
+آیا ادامه میدی؟""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# -------------------- confirm target callback --------------------
+
+
+async def confirm_target_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    transfer = get_transfer_by_id(transfer_id)
+
+    if not transfer:
+
+        await query.edit_message_text("❌ انتقال پیدا نشد.")
+
+        return
+
+    source_channel = transfer["source_channel"]
+
+    target_channel = transfer["target_channel"]
+
+    # -------------------------------------------------
+    # توقف Listener / Polling قبلی
+    # -------------------------------------------------
+
+    stopped = await stop_transfer_listener(
+        source_channel,
+        target_channel,
+    )
+
+    if not stopped:
+
+        await query.edit_message_text(
+            "❌ متوقف کردن انتقال قبلی انجام نشد.\n\n" "لطفاً دوباره تلاش کنید."
+        )
+
+        return
+
+    # -------------------------------------------------
+    # خروج از مقصد قبلی
+    # -------------------------------------------------
+
+    try:
+
+        target_entity = await tg_client.get_entity(target_channel)
+
+        await tg_client(functions.channels.LeaveChannelRequest(target_entity))
+
+    except Exception as e:
+
+        await query.edit_message_text(
+            "❌ خروج اکانت از مقصد قبلی انجام نشد.\n\n" f"خطا: {e}"
+        )
+
+        return
+
+    # -------------------------------------------------
+    # ذخیره وضعیت تغییر مقصد
+    # -------------------------------------------------
+
+    context.user_data["changing_target"] = True
+
+    context.user_data["change_target_transfer_id"] = transfer_id
+
+    context.user_data["state"] = State.TARGET_CHANNEL
+
+    await query.edit_message_text(
+        """✅ اکانت با موفقیت از مقصد قبلی خارج شد.
+
+📢 <b>حالا مقصد جدید را ارسال کن.</b>
+
+مثال:
+<code>@new_target</code>""",
+        parse_mode="HTML",
+    )
+
+
+# -------------------- cancel target callback --------------------
+
+
+async def cancel_target_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    context.user_data.pop(
+        "change_target_transfer_id",
+        None,
+    )
+
+    context.user_data.pop(
+        "changing_target",
+        None,
+    )
+
+    context.user_data["state"] = State.NONE
+
+    await transfer_info(
+        update,
+        context,
+    )

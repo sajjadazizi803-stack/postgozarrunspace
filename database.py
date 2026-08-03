@@ -296,3 +296,62 @@ def get_support_user(admin_message_id):
         return row[0]
 
     return None
+
+
+def update_transfer_source(transfer_id, new_source):
+
+    cursor.execute(
+        """
+        UPDATE transfers
+        SET source_channel=?
+        WHERE id=?
+        """,
+        (
+            new_source,
+            transfer_id,
+        ),
+    )
+
+    db.commit()
+
+
+def update_transfer_target(transfer_id, new_target):
+
+    cursor.execute(
+        """
+        UPDATE transfers
+        SET target_channel=?
+        WHERE id=?
+        """,
+        (
+            new_target,
+            transfer_id,
+        ),
+    )
+
+    db.commit()
+
+
+def get_transfer_by_id(transfer_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM transfers
+        WHERE id = ?
+        """,
+        (transfer_id,),
+    )
+
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if not row:
+        return None
+
+    return dict(row)
