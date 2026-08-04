@@ -1325,22 +1325,45 @@ async def finish_change_target(
 
         if not getattr(
             participant.participant,
-            "admin_rights",
             None,
         ):
             await query.answer(
-                "❌ اکانت هنوز ادمین کانال مقصد نیست.",
-                show_alert=False,
+                text="❌ اکانت هنوز ادمین کانال مقصد نیست.",
+                show_alert=True,
             )
             return
 
     except Exception:
 
         await query.answer(
-            text="❌ ربات هنوز ادمین کانال مقصد نیست.",
-            show_alert=False,
+            text="❌ اکانت هنوز عضو یا ادمین کانال مقصد نیست.",
+            show_alert=True,
+        )
+        return
+
+    try:
+
+        bot_member = await context.bot.get_chat_member(
+            chat_id=target_channel,
+            user_id=context.bot.id,
         )
 
+        if bot_member.status not in (
+            "administrator",
+            "creator",
+        ):
+            await query.answer(
+                text="❌ ربات هنوز ادمین کانال مقصد نیست.",
+                show_alert=True,
+            )
+            return
+
+    except Exception:
+
+        await query.answer(
+            text="❌ ربات هنوز عضو یا ادمین کانال مقصد نیست.",
+            show_alert=True,
+        )
         return
 
     update_transfer_target(
