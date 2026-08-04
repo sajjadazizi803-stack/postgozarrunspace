@@ -168,6 +168,7 @@ async def transfer_message(
                     entity=target_entity,
                     file=file,
                     caption=caption,
+                    formatting_entities=message.entities,
                 )
 
             finally:
@@ -202,6 +203,7 @@ async def transfer_message(
             await client.send_message(
                 entity=target_entity,
                 message=text,
+                formatting_entities=message.entities,
             )
 
         # -----------------------------------------

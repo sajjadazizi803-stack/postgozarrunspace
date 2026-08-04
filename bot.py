@@ -130,9 +130,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "📚 آموزش استفاده",
                 "💬 ارتباط با پشتیبانی",
             ],
-            [
-                "🔥 تست 5231200819986047254",
-            ],
         ],
         resize_keyboard=True,
     )
