@@ -348,21 +348,10 @@ async def polling_worker(
                 if message.id <= last_id:
                     continue
 
-                last_messages[transfer_key] = message.id
-
-                await transfer_message(
-                    client=client,
-                    message=message,
-                    target_entity=target_entity,
-                    transfer_id=transfer_id,
-                )
-
-            last_id = last_messages.get(
-                transfer_key,
-                0,
-            )
-
-            if message.id > last_id:
+                if message.grouped_id and message.id != max(
+                    m.id for m in messages if m.grouped_id == message.grouped_id
+                ):
+                    continue
 
                 last_messages[transfer_key] = message.id
 
