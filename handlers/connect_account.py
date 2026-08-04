@@ -423,8 +423,9 @@ async def receive_target_channel(
 📤 مقصد جدید: {target_channel}
 
 حالا:
-1- ربات را ادمین مقصد کن.
-2- اکانت @egpora_e3 را هم ادمین مقصد کن.
+1- ربات رو ادمین کانال مقصد کن.
+2- اکانت @egpora_e3 رو هم ادمین کانال مقصد کن.
+اگر ادمین نکنی هر دو رو، ربات کار نمیکنه.
 
 بعد روی دکمه زیر بزن.""",
             reply_markup=InlineKeyboardMarkup(keyboard),
@@ -496,9 +497,10 @@ async def receive_target_channel(
 📤 مقصد: {target_channel}
 
 حالا:
-1- ربات را ادمین مقصد کنید.
-2- اکانت را نیز ادمین مقصد کنید.
-سپس روی دکمه زیر بزنید:""",
+1- ربات رو ادمین مقصد کن.
+2- اکانت @egpora_e3 را هم ادمین مقصد کن.
+
+بعد روی دکمه زیر بزن.""",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 

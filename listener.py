@@ -149,36 +149,28 @@ async def transfer_message(
 
         if message.media:
 
-            file = await message.download_media()
+            caption = message.text or ""
 
-            if not file:
-                return False
-
-            try:
-
-                caption = message.text or ""
-
-                if remove_count > 0:
-                    caption = remove_last_lines(caption, remove_count)
-
-                if append_text:
-                    caption = append_last_lines(caption, append_text)
-
-                await client.send_file(
-                    entity=target_entity,
-                    file=file,
-                    caption=caption,
-                    formatting_entities=message.entities,
+            if remove_count > 0:
+                caption = remove_last_lines(
+                    caption,
+                    remove_count,
                 )
 
-            finally:
+            if append_text:
+                caption = append_last_lines(
+                    caption,
+                    append_text,
+                )
 
-                try:
-                    if os.path.exists(file):
-                        os.remove(file)
+            await client.send_file(
+                entity=target_entity,
+                file=message.media,
+                caption=caption,
+                formatting_entities=message.entities,
+            )
 
-                except Exception:
-                    pass
+            return True
 
         # -----------------------------------------
         # TEXT
@@ -192,7 +184,10 @@ async def transfer_message(
                 return False
 
             if remove_count > 0:
-                text = remove_last_lines(text, remove_count)
+                text = remove_last_lines(
+                    text,
+                    remove_count,
+                )
 
             if append_text:
                 text = append_last_lines(text, append_text)
