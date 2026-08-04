@@ -155,6 +155,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    print("BUTTON CALLBACK:", update.callback_query.data)
+
     query = update.callback_query
     await query.answer()
 

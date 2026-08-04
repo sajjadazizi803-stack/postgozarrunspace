@@ -1299,22 +1299,36 @@ async def finish_change_target(
     context: ContextTypes.DEFAULT_TYPE,
 ):
 
+    print("========== finish_change_target ==========")
+
     query = update.callback_query
+    await query.answer()
+
     transfer_id = context.user_data.get("pending_change_target")
     source_channel = context.user_data.get("pending_source")
     target_channel = context.user_data.get("pending_target")
 
+    print("TRANSFER:", transfer_id)
+    print("SOURCE:", source_channel)
+    print("TARGET:", target_channel)
+
     if not transfer_id:
-        await query.edit_message_text("❌ اطلاعات پیدا نشد.")
+        await query.message.reply_text("❌ اطلاعات تغییر مقصد پیدا نشد.")
         return
 
     transfer = get_transfer_by_id(transfer_id)
 
     if not transfer:
-        await query.edit_message_text("❌ انتقال پیدا نشد.")
+        await query.message.reply_text("❌ انتقال پیدا نشد.")
         return
 
     enabled = transfer["enabled"]
+
+    # ===========================
+    # CHECK ACCOUNT ADMIN
+    # ===========================
+
+    print("CHECK ACCOUNT ADMIN")
 
     try:
 
@@ -1325,6 +1339,8 @@ async def finish_change_target(
             )
         )
 
+        print("ACCOUNT STATUS:", type(participant.participant).name)
+
         if not isinstance(
             participant.participant,
             (
@@ -1332,41 +1348,59 @@ async def finish_change_target(
                 ChannelParticipantCreator,
             ),
         ):
-            await update.effective_chat.send_message(
-                "❌ اکانت متصل هنوز ادمین کانال مقصد نیست."
-            )
+
+            await query.message.reply_text("❌ اکانت متصل هنوز ادمین کانال مقصد نیست.")
             return
 
-    except Exception:
+    except Exception as e:
 
-        await update.effective_chat.send_message(
+        print("ACCOUNT ERROR:", e)
+
+        await query.message.reply_text(
             "❌ اکانت متصل هنوز عضو یا ادمین کانال مقصد نیست."
         )
         return
 
+    # ===========================
+    # CHECK BOT ADMIN
+    # ===========================
+
+    print("CHECK BOT ADMIN")
+
     try:
+
+        me = await context.bot.get_me()
+
+        print("BOT ID:", me.id)
 
         bot_member = await context.bot.get_chat_member(
             chat_id=target_channel,
-            user_id=context.bot.id,
+            user_id=me.id,
         )
+
+        print("BOT STATUS:", bot_member.status)
 
         if bot_member.status not in (
             "administrator",
             "creator",
         ):
-            await update.effective_chat.send_message(
+
+            await query.message.reply_text(
                 "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
                 "ابتدا ربات را ادمین کنید و تمام دسترسی‌ها را فعال کنید."
             )
             return
 
-    except Exception:
+    except Exception as e:
 
-        await update.effective_chat.send_message(
-            "❌ ربات هنوز عضو یا ادمین کانال مقصد نیست."
-        )
+        print("BOT ERROR:", e)
+
+        await query.message.reply_text("❌ ربات هنوز عضو یا ادمین کانال مقصد نیست.")
         return
+
+    # ===========================
+    # SAVE
+    # ===========================
 
     update_transfer_target(
         transfer_id,
@@ -1374,6 +1408,8 @@ async def finish_change_target(
     )
 
     if enabled:
+
+        print("START NEW LISTENER")
 
         await add_new_transfer(
             transfer["telegram_id"],
@@ -1393,6 +1429,7 @@ async def finish_change_target(
         "pending_target",
         None,
     )
+
     context.user_data["state"] = State.NONE
 
     await query.edit_message_text(f"""✅ مقصد با موفقیت تغییر کرد.
