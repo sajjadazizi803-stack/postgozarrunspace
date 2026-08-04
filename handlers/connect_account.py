@@ -1212,9 +1212,9 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception:
 
-        await query.answer(
-            "❌ ربات هنوز ادمین کانال مقصد نیست.",
-            show_alert=True,
+        await query.message.reply_text(
+            "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
+            "لطفاً ربات را در کانال مقصد ادمین کنید و دوباره روی «انجام شد» بزنید."
         )
 
         return
@@ -1224,26 +1224,12 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "creator",
     ):
 
-        await query.answer(
-            "❌ ربات هنوز ادمین کانال مقصد نیست.",
-            show_alert=True,
+        await query.message.reply_text(
+            "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
+            "لطفاً ربات را در کانال مقصد ادمین کنید و دوباره روی «انجام شد» بزنید."
         )
 
         return
-
-    # ----------------------------------
-    # بررسی ادمین بودن ربات
-    # ----------------------------------
-
-    if bot_member.status not in (
-        "administrator",
-        "creator",
-    ):
-
-        await query.answer(
-            "❌ ربات هنوز ادمین کانال مقصد نیست.",
-            show_alert=True,
-        )
 
     # ----------------------------------
     # بررسی ادمین بودن اکانت شخصی
@@ -1265,18 +1251,18 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "ChannelParticipantCreator",
         ):
 
-            await query.answer(
-                "❌ اکانت هنوز ادمین کانال مقصد نیست.",
-                show_alert=True,
+            await query.message.reply_text(
+                "❌ اکانت هنوز ادمین کانال مقصد نیست.\n\n"
+                "لطفاً اکانت را در کانال مقصد ادمین کنید و دوباره روی «انجام شد» بزنید."
             )
 
             return
 
     except Exception:
 
-        await query.answer(
-            "❌ اکانت هنوز ادمین کانال مقصد نیست.",
-            show_alert=True,
+        await query.message.reply_text(
+            "❌ امکان بررسی ادمین بودن اکانت وجود ندارد.\n\n"
+            "مطمئن شوید اکانت در مقصد عضو و ادمین است."
         )
 
         return
