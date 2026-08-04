@@ -1165,17 +1165,33 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        entity = await tg_client.get_entity(target_channel)
-
-        await tg_client.get_permissions(
-            entity,
-            "me",
+        await tg_client(
+            GetParticipantRequest(
+                target_channel,
+                "me",
+            )
         )
+
+    except UserNotParticipantError:
+
+        await query.answer(
+            "❌ اکانت داخل کانال مقصد عضو نیست.",
+            show_alert=True,
+        )
+
+        return
 
     except Exception as e:
 
-        await query.edit_message_text(
-            f"❌ اکانت داخل کانال مقصد عضو نیست یا دسترسی ندارد.\n\n{type(e).__name__}"
+        print(
+            "TARGET CHECK ERROR:",
+            type(e).name,
+            str(e),
+        )
+
+        await query.answer(
+            "❌ بررسی اکانت در مقصد انجام نشد.",
+            show_alert=True,
         )
 
         return
