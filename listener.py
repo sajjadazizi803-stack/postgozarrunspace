@@ -144,30 +144,6 @@ async def transfer_message(
             except Exception:
                 append_text = ""
 
-            # بازسازی Entityها (تست حفظ Custom Emoji)
-
-            entities = None
-
-            if message.entities:
-
-                entities = []
-
-            for entity in message.entities:
-
-                if isinstance(entity, MessageEntityCustomEmoji):
-
-                    entities.append(
-                        MessageEntityCustomEmoji(
-                            offset=entity.offset,
-                            length=entity.length,
-                            document_id=entity.document_id,
-                        )
-                    )
-
-            else:
-
-                entities.append(entity)
-
         # -----------------------------------------
         # MEDIA
         # -----------------------------------------
@@ -192,7 +168,7 @@ async def transfer_message(
                 entity=target_entity,
                 file=message.media,
                 caption=caption,
-                formatting_entities=entities,
+                formatting_entities=message.entities,
             )
 
             return True
@@ -223,7 +199,7 @@ async def transfer_message(
             await client.send_message(
                 entity=target_entity,
                 message=text,
-                formatting_entities=entities,
+                formatting_entities=message.entities,
             )
 
         # -----------------------------------------

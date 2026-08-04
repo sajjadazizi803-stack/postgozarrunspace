@@ -1208,6 +1208,40 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # ----------------------------------
+    # بررسی ادمین بودن اکانت شخصی
+    # ----------------------------------
+
+    try:
+
+        participant = await tg_client(
+            GetParticipantRequest(
+                target_channel,
+                "me",
+            )
+        )
+
+        participant = participant.participant
+
+        if type(participant).__name__ not in (
+            "ChannelParticipantAdmin",
+            "ChannelParticipantCreator",
+        ):
+
+            await query.edit_message_text(
+                "❌ هنوز اکانت <code>@egpora_e3</code> را ادمین کانال مقصد نکرده‌اید.\n\n"
+                "ابتدا اکانت را ادمین کنید و سپس دوباره روی «✅ انجام شد» بزنید.",
+                parse_mode="HTML",
+            )
+            return
+
+    except Exception as e:
+
+        await query.edit_message_text(
+            f"❌ امکان بررسی ادمین بودن اکانت وجود ندارد.\n\n{e}"
+        )
+        return
+
+    # ----------------------------------
     # ثبت انتقال
     # ----------------------------------
 
