@@ -1297,7 +1297,7 @@ async def finish_change_target(
 ):
 
     query = update.callback_query
-
+    await query.answer("finish_change_target")
     transfer_id = context.user_data.get("pending_change_target")
     source_channel = context.user_data.get("pending_source")
     target_channel = context.user_data.get("pending_target")
