@@ -30,6 +30,11 @@ from database import (
     get_transfer_by_id,
 )
 
+from telethon.tl.types import (
+    ChannelParticipantAdmin,
+    ChannelParticipantCreator,
+)
+
 change_target_states = {}
 # =========================
 # connect account
@@ -1297,7 +1302,6 @@ async def finish_change_target(
 ):
 
     query = update.callback_query
-    await query.answer("finish_change_target")
     transfer_id = context.user_data.get("pending_change_target")
     source_channel = context.user_data.get("pending_source")
     target_channel = context.user_data.get("pending_target")
@@ -1323,9 +1327,12 @@ async def finish_change_target(
             )
         )
 
-        if not getattr(
+        if not isinstance(
             participant.participant,
-            None,
+            (
+                ChannelParticipantAdmin,
+                ChannelParticipantCreator,
+            ),
         ):
             await query.answer(
                 text="❌ اکانت هنوز ادمین کانال مقصد نیست.",
