@@ -252,10 +252,14 @@ async def receive_source_channel(
 
     context.user_data["state"] = State.TARGET_CHANNEL
 
-    await update.message.reply_text(f"""✅ اکانت عضو کانال مبدا شد.
-📥 {source_channel}
-حالا آیدی کانال مقصد را ارسال کنید.
-مثال: @target_channel""")
+    await update.message.reply_text(
+        f"""✅ <b>کانال مبدا ثبت شد.</b>
+📥 <b>مبدا:</b> {source_channel}
+📤 <b>حالا آیدی کانال مقصد را ارسال کنید.</b>
+📝 مثال:
+<code>@target_channel</code>""",
+        parse_mode="HTML",
+    )
 
 
 # =========================
@@ -408,17 +412,17 @@ async def receive_target_channel(
         ]
 
         await update.message.reply_text(
-            f"""✅ اکانت عضو کانال مقصد شد.
+            f"""✅ <b>کانال مقصد ثبت شد.</b>
+📥 <b>مبدا:</b> {source_channel}
+📤 <b>مقصد جدید:</b> {target_channel}
 
-📥 مبدا: {source_channel}
-📤 مقصد جدید: {target_channel}
-
-حالا:
+<b>حالا:
 1- ربات رو ادمین کانال مقصد کن.
 2- اکانت @egpora_e3 رو هم ادمین کانال مقصد کن.
-اگر ادمین نکنی هر دو رو، ربات کار نمیکنه.
+اگر هر دو ادمین نباشن، انتقال انجام نمیشه.
 
-بعد روی دکمه زیر بزن.""",
+بعد روی دکمه زیر بزن.</b>""",
+            parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
@@ -482,17 +486,17 @@ async def receive_target_channel(
     context.user_data["state"] = State.NONE
 
     await update.message.reply_text(
-        f"""✅ اکانت عضو کانال مقصد شد.
+        f"""✅ <b>کانال مقصد ثبت شد.</b>
+📥 <b>مبدا:</b> {source_channel}
+📤 <b>مقصد:</b> {target_channel}
 
-📥 مبدا: {source_channel}
-📤 مقصد: {target_channel}
-
-حالا:
+<b>حالا:
 1- ربات رو ادمین کانال مقصد کن.
 2- اکانت @egpora_e3 رو هم ادمین کانال مقصد کن.
-اگر ادمین نکنی هر دو رو، ربات کار نمیکنه.
+اگر هر دو ادمین نباشن، انتقال انجام نمیشه
 
-بعد روی دکمه زیر بزن.""",
+بعد روی دکمه زیر بزن.</b>""",
+        parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 

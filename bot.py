@@ -206,7 +206,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             await update.message.reply_text(
-                f"""👋 <b>سلام {first_name}، به منوی اصلی RunSpace خوش اومدی.</b>""",
+                f"""👋 <b>سلام {first_name}، به ربات مدیریت کانال | RunSpace خوش اومدی 🚀</b>
+
+✨ با این ربات می‌تونی کانالت رو بهتر مدیریت کنی.
+
+⚠️ <b>قبل از استفاده، حتماً نکات مهم رو از بخش آموزش بخون.</b>""",
                 parse_mode="HTML",
                 reply_markup=keyboard,
             )
