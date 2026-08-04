@@ -1335,12 +1335,14 @@ async def finish_change_target(
             await update.effective_chat.send_message(
                 "❌ اکانت متصل هنوز ادمین کانال مقصد نیست."
             )
+            return
 
     except Exception:
 
         await update.effective_chat.send_message(
             "❌ اکانت متصل هنوز عضو یا ادمین کانال مقصد نیست."
         )
+        return
 
     try:
 
@@ -1370,8 +1372,6 @@ async def finish_change_target(
         transfer_id,
         target_channel,
     )
-
-    context.user_data.clear()
 
     if enabled:
 
