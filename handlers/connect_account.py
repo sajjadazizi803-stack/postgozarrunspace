@@ -1192,7 +1192,10 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception:
 
-        await query.edit_message_text("❌ ربات هنوز ادمین کانال مقصد نیست.")
+        await query.answer(
+            "❌ ربات هنوز ادمین کانال مقصد نیست.",
+            show_alert=False,
+        )
         return
 
     # ----------------------------------
@@ -1204,7 +1207,10 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "creator",
     ):
 
-        await query.edit_message_text("❌ ربات هنوز ادمین کانال مقصد نیست.")
+        await query.answer(
+            "❌ ربات هنوز ادمین کانال مقصد نیست.",
+            show_alert=False,
+        )
         return
 
     # ----------------------------------
@@ -1240,12 +1246,10 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if "member list is inaccessible" in error:
 
-            await query.edit_message_text("❌ ربات در کانال مقصد ادمین نیست.")
-            return
-
-        await query.edit_message_text(
-            f"❌ امکان بررسی ادمین بودن اکانت وجود ندارد.\n\n{e}"
-        )
+            await query.answer(
+                "❌ اکانت هنوز ادمین کانال مقصد نیست.",
+                show_alert=False,
+            )
         return
 
     # ----------------------------------
@@ -1316,12 +1320,18 @@ async def finish_change_target(
             "admin_rights",
             None,
         ):
-            await query.edit_message_text("❌ اکانت هنوز ادمین مقصد نیست.")
+            await query.answer(
+                "❌ اکانت هنوز ادمین کانال مقصد نیست.",
+                show_alert=False,
+            )
             return
 
     except Exception:
 
-        await query.edit_message_text("❌ اکانت هنوز ادمین مقصد نیست.")
+        await query.answer(
+            "❌ اکانت هنوز ادمین کانال مقصد نیست.",
+            show_alert=False,
+        )
         return
 
     update_transfer_target(
