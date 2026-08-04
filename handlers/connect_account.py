@@ -1130,6 +1130,7 @@ async def append_lines_setting(update: Update, context: ContextTypes.DEFAULT_TYP
 async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
+    print("FINISH TRANSFER RUNNING", query.data)
     await query.answer()
 
     source_channel = context.user_data.get("pending_source")
