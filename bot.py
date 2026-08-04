@@ -543,6 +543,13 @@ def create_bot():
     from telegram.ext import CallbackQueryHandler
 
     app.add_handler(
+        CommandHandler(
+            "start",
+            start,
+        )
+    )
+
+    app.add_handler(
         CallbackQueryHandler(
             transfer_info,
             pattern=r"^transfer_\d+$",
@@ -571,20 +578,6 @@ def create_bot():
     )
 
     app.add_handler(
-        CommandHandler(
-            "start",
-            start,
-        )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.ALL & ~filters.COMMAND,
-            text_buttons,
-        )
-    )
-
-    app.add_handler(
         CallbackQueryHandler(
             transfer_settings,
             pattern=r"^settings_\d+$",
@@ -608,16 +601,8 @@ def create_bot():
     app.add_handler(
         CallbackQueryHandler(
             finish_transfer,
-            pattern="^finish_transfer$",
+            pattern=r"^finish_transfer$",
         )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.ALL & ~filters.COMMAND,
-            admin_reply,
-        ),
-        group=100,
     )
 
     app.add_handler(
@@ -665,11 +650,31 @@ def create_bot():
     app.add_handler(
         CallbackQueryHandler(
             finish_change_target,
-            pattern="^finish_change_target$",
+            pattern=r"^finish_change_target$",
         )
     )
 
-    app.add_handler(CallbackQueryHandler(buttons))
+    app.add_handler(
+        CallbackQueryHandler(
+            buttons,
+        )
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.ALL & ~filters.COMMAND,
+            text_buttons,
+        )
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.ALL & ~filters.COMMAND,
+            admin_reply,
+        ),
+        group=100,
+    )
+
     app.bot_data["tg_client"] = tg_client
 
     async def startup(app):
