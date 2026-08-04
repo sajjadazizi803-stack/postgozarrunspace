@@ -1233,23 +1233,20 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "ChannelParticipantCreator",
         ):
 
-            await query.edit_message_text(
-                "❌ هنوز اکانت <code>@egpora_e3</code> را ادمین کانال مقصد نکرده‌اید.\n\n"
-                "ابتدا اکانت را ادمین کنید و سپس دوباره روی «✅ انجام شد» بزنید.",
-                parse_mode="HTML",
-            )
-            return
-
-    except Exception as e:
-
-        error = str(e).lower()
-
-        if "member list is inaccessible" in error:
-
             await query.answer(
-                "❌ اکانت هنوز ادمین کانال مقصد نیست.",
+                text="❌ اکانت هنوز ادمین کانال مقصد نیست.",
                 show_alert=False,
             )
+
+            return
+
+    except Exception:
+
+        await query.answer(
+            text="❌ اکانت هنوز ادمین کانال مقصد نیست.",
+            show_alert=False,
+        )
+
         return
 
     # ----------------------------------
@@ -1288,7 +1285,6 @@ async def finish_change_target(
 ):
 
     query = update.callback_query
-    await query.answer()
 
     transfer_id = context.user_data.get("pending_change_target")
     source_channel = context.user_data.get("pending_source")
@@ -1329,9 +1325,10 @@ async def finish_change_target(
     except Exception:
 
         await query.answer(
-            "❌ اکانت هنوز ادمین کانال مقصد نیست.",
+            text="❌ ربات هنوز ادمین کانال مقصد نیست.",
             show_alert=False,
         )
+
         return
 
     update_transfer_target(
