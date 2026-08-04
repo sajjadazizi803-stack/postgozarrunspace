@@ -1334,19 +1334,15 @@ async def finish_change_target(
                 ChannelParticipantCreator,
             ),
         ):
-            await query.answer(
-                text="❌ اکانت هنوز ادمین کانال مقصد نیست.",
-                show_alert=True,
+            await update.effective_chat.send_message(
+                "❌ اکانت متصل هنوز ادمین کانال مقصد نیست."
             )
-            return
 
     except Exception:
 
-        await query.answer(
-            text="❌ اکانت هنوز عضو یا ادمین کانال مقصد نیست.",
-            show_alert=True,
+        await update.effective_chat.send_message(
+            "❌ اکانت متصل هنوز عضو یا ادمین کانال مقصد نیست."
         )
-        return
 
     try:
 
@@ -1359,17 +1355,16 @@ async def finish_change_target(
             "administrator",
             "creator",
         ):
-            await query.answer(
-                text="❌ ربات هنوز ادمین کانال مقصد نیست.",
-                show_alert=True,
+            await update.effective_chat.send_message(
+                "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
+                "ابتدا ربات را ادمین کنید و تمام دسترسی‌ها را فعال کنید."
             )
             return
 
     except Exception:
 
-        await query.answer(
-            text="❌ ربات هنوز عضو یا ادمین کانال مقصد نیست.",
-            show_alert=True,
+        await update.effective_chat.send_message(
+            "❌ ربات هنوز عضو یا ادمین کانال مقصد نیست."
         )
         return
 
