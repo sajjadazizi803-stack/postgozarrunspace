@@ -143,28 +143,28 @@ async def transfer_message(
 
         if message.grouped_id:
 
-            album = await client.get_messages(
+            album = []
+
+            async for m in client.iter_messages(
                 message.chat_id,
-                ids=range(message.id - 20, message.id + 1),
-            )
+                limit=20,
+            ):
 
-            album = [m for m in album if m and m.grouped_id == message.grouped_id]
+                if m.grouped_id == message.grouped_id:
+                    album.append(m)
 
-            album.sort(key=lambda x: x.id)
+                elif album:
+                    break
 
-            files = []
+            album.reverse()
 
-            caption = ""
+            if not album:
+                album = [message]
 
-            entities = None
+            files = [m.media for m in album]
 
-            for i, m in enumerate(album):
-
-                files.append(m.media)
-
-                if i == 0:
-                    caption = m.text or ""
-                    entities = m.entities
+            caption = album[0].text or ""
+            entities = album[0].entities
 
             if remove_count > 0:
                 caption = remove_last_lines(
@@ -179,8 +179,8 @@ async def transfer_message(
                 )
 
             await client.send_file(
-                target_entity,
-                files,
+                entity=target_entity,
+                file=files,
                 caption=caption,
                 formatting_entities=entities,
             )
@@ -329,7 +329,7 @@ async def polling_worker(
 
             messages = await client.get_messages(
                 source_entity,
-                limit=10,
+                limit=1,
             )
 
             if not messages:
