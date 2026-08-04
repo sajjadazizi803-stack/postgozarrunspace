@@ -1236,6 +1236,13 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
 
+        error = str(e).lower()
+
+        if "member list is inaccessible" in error:
+
+            await query.edit_message_text("❌ ربات در کانال مقصد ادمین نیست.")
+            return
+
         await query.edit_message_text(
             f"❌ امکان بررسی ادمین بودن اکانت وجود ندارد.\n\n{e}"
         )
