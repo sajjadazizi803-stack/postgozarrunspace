@@ -1194,9 +1194,8 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.answer(
             "❌ ربات هنوز ادمین کانال مقصد نیست.",
-            show_alert=False,
+            show_alert=True,
         )
-        return
 
     # ----------------------------------
     # بررسی ادمین بودن ربات
@@ -1209,9 +1208,8 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.answer(
             "❌ ربات هنوز ادمین کانال مقصد نیست.",
-            show_alert=False,
+            show_alert=True,
         )
-        return
 
     # ----------------------------------
     # بررسی ادمین بودن اکانت شخصی
@@ -1234,8 +1232,8 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ):
 
             await query.answer(
-                text="❌ اکانت هنوز ادمین کانال مقصد نیست.",
-                show_alert=False,
+                "❌ اکانت هنوز ادمین کانال مقصد نیست.",
+                show_alert=True,
             )
 
             return
@@ -1243,8 +1241,8 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
 
         await query.answer(
-            text="❌ اکانت هنوز ادمین کانال مقصد نیست.",
-            show_alert=False,
+            "❌ اکانت هنوز ادمین کانال مقصد نیست.",
+            show_alert=True,
         )
 
         return
