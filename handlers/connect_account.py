@@ -1190,9 +1190,9 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id=me.id,
         )
 
-    except Exception as e:
+    except Exception:
 
-        await query.edit_message_text(f"ERROR:\n{e}")
+        await query.edit_message_text("❌ ربات هنوز ادمین کانال مقصد نیست.")
         return
 
     # ----------------------------------
@@ -1204,7 +1204,7 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "creator",
     ):
 
-        await query.edit_message_text("❌ ربات ادمین کانال مقصد نیست.")
+        await query.edit_message_text("❌ ربات هنوز ادمین کانال مقصد نیست.")
         return
 
     # ----------------------------------
