@@ -1178,7 +1178,7 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
 
     # ----------------------------------
-    # بررسی وجود ربات
+    # بررسی وجود و ادمین بودن ربات
     # ----------------------------------
 
     try:
@@ -1196,6 +1196,20 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ ربات هنوز ادمین کانال مقصد نیست.",
             show_alert=True,
         )
+
+        return
+
+    if bot_member.status not in (
+        "administrator",
+        "creator",
+    ):
+
+        await query.answer(
+            "❌ ربات هنوز ادمین کانال مقصد نیست.",
+            show_alert=True,
+        )
+
+        return
 
     # ----------------------------------
     # بررسی ادمین بودن ربات
