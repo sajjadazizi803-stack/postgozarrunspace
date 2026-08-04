@@ -156,9 +156,8 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML",
         )
 
-        await context.bot.send_message(
-            chat_id=query.from_user.id,
-            text="✅ منوی اصلی فعال شد.",
+        await query.message.reply_text(
+            "به منوی اصلی بازگشتید 👇",
             reply_markup=keyboard,
         )
 
@@ -177,14 +176,52 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    first_name = update.effective_user.first_name
+    first_name = update.effective_user.first_name or "دوست عزیز"
+
+    try:
+
+        member = await context.bot.get_chat_member(
+            chat_id=CHANNEL_USERNAME,
+            user_id=update.effective_user.id,
+        )
+
+        if member.status in (
+            "member",
+            "administrator",
+            "creator",
+        ):
+
+            keyboard = ReplyKeyboardMarkup(
+                [
+                    [
+                        "📢 افزودن کانال",
+                        "📋 کانال‌های ثبت شده",
+                    ],
+                    [
+                        "📚 آموزش استفاده",
+                        "💬 ارتباط با پشتیبانی",
+                    ],
+                ],
+                resize_keyboard=True,
+            )
+
+            await update.message.reply_text(
+                f"""👋 <b>سلام {first_name}، به منوی اصلی RunSpace خوش اومدی.</b>""",
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
+
+            return
+
+    except Exception:
+        pass
 
     keyboard = InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
                     "📢 عضویت در کانال",
-                    url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}",
+                    url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}",
                 )
             ],
             [
