@@ -69,7 +69,7 @@ async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
 
-        print("SUPPORT ERROR:", e)
+        pass
 
         await update.message.reply_text(f"❌ خطا:\n{e}")
 

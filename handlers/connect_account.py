@@ -315,12 +315,7 @@ async def receive_target_channel(
             )
 
         except Exception as e:
-
-            print(
-                "STOP OLD LISTENER ERROR:",
-                type(e).__name__,
-                str(e),
-            )
+            pass
 
         # =================================================
         # JOIN NEW TARGET
@@ -352,13 +347,8 @@ async def receive_target_channel(
                         old_target,
                     )
 
-                except Exception as restore_error:
-
-                    print(
-                        "RESTORE OLD TARGET ERROR:",
-                        type(restore_error).__name__,
-                        str(restore_error),
-                    )
+                except Exception as e:
+                    pass
 
             await update.message.reply_text(
                 f"❌ عضویت در مقصد جدید انجام نشد.\n\nخطا: {e}"
@@ -392,12 +382,8 @@ async def receive_target_channel(
                         source_channel,
                         old_target,
                     )
-                except Exception as restore_error:
-                    print(
-                        "RESTORE OLD TARGET ERROR:",
-                        type(restore_error).__name__,
-                        str(restore_error),
-                    )
+                except Exception as e:
+                    pass
 
             await update.message.reply_text(
                 f"❌ امکان دریافت اطلاعات مقصد جدید وجود ندارد.\n\nخطا: {e}"
@@ -766,13 +752,9 @@ async def confirm_source_callback(
 
         await tg_client(functions.channels.LeaveChannelRequest(old_entity))
 
-    except Exception as e:
+    except Exception:
 
-        print(
-            "❌ LEAVE SOURCE ERROR:",
-            type(e).__name__,
-            str(e),
-        )
+        pass
 
         await query.edit_message_text(
             "❌ خروج اکانت از مبدا قبلی انجام نشد.\n\n" "تغییر مبدا انجام نشد."
@@ -890,15 +872,9 @@ async def delete_transfer_callback(
 
         await tg_client(functions.channels.LeaveChannelRequest(source_entity))
 
-        print(f"✅ LEFT SOURCE: {source_channel}")
+    except Exception:
 
-    except Exception as e:
-
-        print(
-            "LEAVE SOURCE ERROR:",
-            type(e).__name__,
-            str(e),
-        )
+        pass
 
     # --------------------------------------------------
     # خروج از مقصد
@@ -910,15 +886,9 @@ async def delete_transfer_callback(
 
         await tg_client(functions.channels.LeaveChannelRequest(target_entity))
 
-        print(f"✅ LEFT TARGET: {target_channel}")
+    except Exception:
 
-    except Exception as e:
-
-        print(
-            "LEAVE TARGET ERROR:",
-            type(e).__name__,
-            str(e),
-        )
+        pass
 
     # --------------------------------------------------
     # حذف انتقال از دیتابیس
@@ -1026,11 +996,7 @@ async def toggle_transfer_callback(
                 False,
             )
 
-            print(
-                "ACTIVATE ERROR:",
-                type(e).__name__,
-                str(e),
-            )
+            pass
 
             await query.edit_message_text("❌ فعال‌سازی انتقال انجام نشد.")
 
@@ -1130,7 +1096,6 @@ async def append_lines_setting(update: Update, context: ContextTypes.DEFAULT_TYP
 async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
-    print("FINISH TRANSFER RUNNING", query.data)
     await query.answer()
 
     source_channel = context.user_data.get("pending_source")
@@ -1182,13 +1147,9 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    except Exception as e:
+    except Exception:
 
-        print(
-            "TARGET CHECK ERROR:",
-            type(e).name,
-            str(e),
-        )
+        pass
 
         await query.answer(
             "❌ بررسی اکانت در مقصد انجام نشد.",
@@ -1302,18 +1263,12 @@ async def finish_change_target(
     context: ContextTypes.DEFAULT_TYPE,
 ):
 
-    print("========== finish_change_target ==========")
-
     query = update.callback_query
     await query.answer()
 
     transfer_id = context.user_data.get("pending_change_target")
     source_channel = context.user_data.get("pending_source")
     target_channel = context.user_data.get("pending_target")
-
-    print("TRANSFER:", transfer_id)
-    print("SOURCE:", source_channel)
-    print("TARGET:", target_channel)
 
     if not transfer_id:
         await query.message.reply_text("❌ اطلاعات تغییر مقصد پیدا نشد.")
@@ -1331,8 +1286,6 @@ async def finish_change_target(
     # CHECK ACCOUNT ADMIN
     # ===========================
 
-    print("CHECK ACCOUNT ADMIN")
-
     try:
 
         participant = await tg_client(
@@ -1341,8 +1294,6 @@ async def finish_change_target(
                 "me",
             )
         )
-
-        print("ACCOUNT STATUS:", type(participant.participant).name)
 
         if not isinstance(
             participant.participant,
@@ -1355,9 +1306,9 @@ async def finish_change_target(
             await query.message.reply_text("❌ اکانت متصل هنوز ادمین کانال مقصد نیست.")
             return
 
-    except Exception as e:
+    except Exception:
 
-        print("ACCOUNT ERROR:", e)
+        pass
 
         await query.message.reply_text(
             "❌ اکانت متصل هنوز عضو یا ادمین کانال مقصد نیست."
@@ -1368,20 +1319,14 @@ async def finish_change_target(
     # CHECK BOT ADMIN
     # ===========================
 
-    print("CHECK BOT ADMIN")
-
     try:
 
         me = await context.bot.get_me()
-
-        print("BOT ID:", me.id)
 
         bot_member = await context.bot.get_chat_member(
             chat_id=target_channel,
             user_id=me.id,
         )
-
-        print("BOT STATUS:", bot_member.status)
 
         if bot_member.status not in (
             "administrator",
@@ -1394,9 +1339,9 @@ async def finish_change_target(
             )
             return
 
-    except Exception as e:
+    except Exception:
 
-        print("BOT ERROR:", e)
+        pass
 
         await query.message.reply_text("❌ ربات هنوز عضو یا ادمین کانال مقصد نیست.")
         return
@@ -1411,8 +1356,6 @@ async def finish_change_target(
     )
 
     if enabled:
-
-        print("START NEW LISTENER")
 
         await add_new_transfer(
             transfer["telegram_id"],

@@ -70,17 +70,9 @@ async def stop_transfer_listener(
         last_messages.pop(key, None)
         channel_pts.pop(key, None)
 
-        print(f"🛑 LISTENER STOPPED: {source_channel} -> {target_channel}")
-
         return True
 
     except Exception as e:
-
-        print(
-            "❌ STOP LISTENER ERROR:",
-            type(e).__name__,
-            str(e),
-        )
 
         return False
 
@@ -217,8 +209,6 @@ async def transfer_message(
         return True
 
     except Exception as e:
-
-        print("TRANSFER ERROR:", e)
 
         return False
 
@@ -427,7 +417,6 @@ async def add_new_transfer(
     )
 
     if key in polling_tasks or key in registered_listeners:
-        print(f"⚠️ LISTENER ALREADY EXISTS: {source_channel} -> {target_channel}")
         return
 
     # -----------------------------------------------------

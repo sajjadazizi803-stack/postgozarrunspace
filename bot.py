@@ -51,6 +51,8 @@ from database import set_append_last_lines
 from config import ADMIN_ID
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 
+CHANNEL_USERNAME = "@SADSSCS"
+
 from handlers.connect_account import (
     change_target_callback,
     confirm_target_callback,
@@ -113,6 +115,61 @@ async def show_training_menu(update, context):
     )
 
 
+# ---------------------- check join --------------------
+
+
+async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    member = await context.bot.get_chat_member(
+        CHANNEL_USERNAME,
+        query.from_user.id,
+    )
+
+    if member.status in (
+        "member",
+        "administrator",
+        "creator",
+    ):
+
+        keyboard = ReplyKeyboardMarkup(
+            [
+                [
+                    "📢 افزودن کانال",
+                    "📋 کانال‌های ثبت شده",
+                ],
+                [
+                    "📚 آموزش استفاده",
+                    "💬 ارتباط با پشتیبانی",
+                ],
+            ],
+            resize_keyboard=True,
+        )
+
+        await query.message.edit_text(
+            f"""👋 <b>سلام {query.from_user.first_name}، به ربات مدیریت کانال | RunSpace خوش اومدی 🚀</b>
+
+✨ با این ربات می‌تونی کانالت رو بهتر مدیریت کنی.
+
+⚠️ <b>قبل از استفاده، حتماً نکات مهم رو از بخش آموزش بخون.</b>""",
+            parse_mode="HTML",
+        )
+
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="✅ منوی اصلی فعال شد.",
+            reply_markup=keyboard,
+        )
+
+    else:
+
+        await query.answer(
+            "❌ هنوز عضو کانال نشدی.",
+            show_alert=True,
+        )
+
+
 # =========================
 # START
 # =========================
@@ -120,31 +177,31 @@ async def show_training_menu(update, context):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    keyboard = ReplyKeyboardMarkup(
+    first_name = update.effective_user.first_name
+
+    keyboard = InlineKeyboardMarkup(
         [
             [
-                "📢 افزودن کانال",
-                "📋 کانال‌های ثبت شده",
+                InlineKeyboardButton(
+                    "📢 عضویت در کانال",
+                    url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}",
+                )
             ],
             [
-                "📚 آموزش استفاده",
-                "💬 ارتباط با پشتیبانی",
+                InlineKeyboardButton(
+                    "✅ ورود به ربات",
+                    callback_data="check_join",
+                )
             ],
-        ],
-        resize_keyboard=True,
+        ]
     )
 
     await update.message.reply_text(
-        """👋 سلام، خوش اومدی به RunSpace 🚀
+        f"""👋 <b>سلام {first_name}، به RunSpace خوش اومدی.</b>
 
-اینجا میتونی پست‌های یک کانال رو کاملاً خودکار داخل کانال دیگه منتشر کنی.
-
-⚠️ قبل از شروع، حتماً یک بار بخش «📚 آموزش استفاده» رو بخون.
-
-مخصوصاً قسمت نکات مهم رو؛ تا با مشکل مواجه نشی.
-""",
+⚠️ <b>قبل از استفاده از ربات باید در کانال زیر عضو بشی.</b>""",
+        parse_mode="HTML",
         reply_markup=keyboard,
-        parse_mode="Markdown",
     )
 
 
@@ -154,8 +211,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    print("BUTTON CALLBACK:", update.callback_query.data)
 
     query = update.callback_query
     await query.answer()
@@ -541,6 +596,13 @@ def create_bot():
     app = Application.builder().token(config.BOT_TOKEN).build()
 
     from telegram.ext import CallbackQueryHandler
+
+    app.add_handler(
+        CallbackQueryHandler(
+            check_join,
+            pattern="^check_join$",
+        )
+    )
 
     app.add_handler(
         CommandHandler(
