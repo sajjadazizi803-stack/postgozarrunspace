@@ -1161,26 +1161,24 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         pass
 
-    # ----------------------------------
     # بررسی عضویت اکانت در مقصد
-    # ----------------------------------
 
     try:
 
-        await tg_client(
-            GetParticipantRequest(
-                target_channel,
-                "me",
-            )
+        entity = await tg_client.get_entity(target_channel)
+
+        await tg_client.get_permissions(
+            entity,
+            "me",
         )
 
-    except UserNotParticipantError:
+    except Exception as e:
 
-        await query.edit_message_text("❌ اکانت داخل کانال مقصد عضو نیست.")
+        await query.edit_message_text(
+            f"❌ اکانت داخل کانال مقصد عضو نیست یا دسترسی ندارد.\n\n{type(e).__name__}"
+        )
+
         return
-
-    except Exception:
-        pass
 
     # ----------------------------------
     # بررسی وجود و ادمین بودن ربات
