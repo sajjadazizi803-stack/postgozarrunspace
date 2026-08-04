@@ -13,6 +13,7 @@ from database import (
 )
 
 from telegram_client import tg_client
+from telethon.tl.types import InputSingleMedia
 
 # =========================================================
 # GLOBAL
@@ -135,6 +136,56 @@ async def transfer_message(
                 append_text = get_append_last_lines(transfer_id)
             except Exception:
                 append_text = ""
+
+        # -----------------------------------------
+        # ALBUM
+        # -----------------------------------------
+
+        if message.grouped_id:
+
+            album = await client.get_messages(
+                message.chat_id,
+                ids=range(message.id - 20, message.id + 1),
+            )
+
+            album = [m for m in album if m and m.grouped_id == message.grouped_id]
+
+            album.sort(key=lambda x: x.id)
+
+            files = []
+
+            caption = ""
+
+            entities = None
+
+            for i, m in enumerate(album):
+
+                files.append(m.media)
+
+                if i == 0:
+                    caption = m.text or ""
+                    entities = m.entities
+
+            if remove_count > 0:
+                caption = remove_last_lines(
+                    caption,
+                    remove_count,
+                )
+
+            if append_text:
+                caption = append_last_lines(
+                    caption,
+                    append_text,
+                )
+
+            await client.send_file(
+                target_entity,
+                files,
+                caption=caption,
+                formatting_entities=entities,
+            )
+
+            return True
 
         # -----------------------------------------
         # MEDIA
@@ -278,14 +329,33 @@ async def polling_worker(
 
             messages = await client.get_messages(
                 source_entity,
-                limit=1,
+                limit=10,
             )
 
             if not messages:
                 await asyncio.sleep(2)
                 continue
 
-            message = messages[0]
+            messages.reverse()
+
+            for message in messages:
+
+                last_id = last_messages.get(
+                    transfer_key,
+                    0,
+                )
+
+                if message.id <= last_id:
+                    continue
+
+                last_messages[transfer_key] = message.id
+
+                await transfer_message(
+                    client=client,
+                    message=message,
+                    target_entity=target_entity,
+                    transfer_id=transfer_id,
+                )
 
             last_id = last_messages.get(
                 transfer_key,
