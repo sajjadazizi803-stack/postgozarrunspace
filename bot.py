@@ -61,6 +61,7 @@ from config import ADMIN_ID
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from handlers.ads import ads_panel
 from conversation import State
+from handlers.ads import add_group
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -510,6 +511,16 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_data = context.user_data
 
+    state = user_data.get("state", State.NONE)
+
+    if user_data.get("ads_state") == "WAIT_GROUP":
+        await receive_group(update, context)
+        return
+
+    if user_data.get("ads_state") == "WAIT_INTERVAL":
+        await receive_interval(update, context)
+        return
+
     if user_data is None:
         return
 
@@ -527,19 +538,9 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text in MAIN_BUTTONS:
 
-        clear_waiting_state(context)
-
-        user_data["state"] = State.NONE
-
-        state = user_data.get("state", State.NONE)
-
-        if user_data.get("ads_state") == "WAIT_GROUP":
-            await receive_group(update, context)
-            return
-
-        if user_data.get("ads_state") == "WAIT_INTERVAL":
-            await receive_interval(update, context)
-            return
+        if user_data.get("ads_state") not in ("WAIT_GROUP", "WAIT_INTERVAL"):
+            clear_waiting_state(context)
+            user_data["state"] = State.NONE
 
     # =========================
     # دریافت کانال مبدا
@@ -660,8 +661,6 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "👥 گروه":
 
-        await add_group(update, context)
-
         return
 
     if text == "🔙":
@@ -752,13 +751,6 @@ def create_bot():
     from telegram.ext import CallbackQueryHandler
 
     app.add_handler(
-        CallbackQueryHandler(
-            check_join,
-            pattern="^check_join$",
-        )
-    )
-
-    app.add_handler(
         CommandHandler(
             "start",
             start,
@@ -769,6 +761,13 @@ def create_bot():
         CommandHandler(
             "ads",
             ads_panel,
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            check_join,
+            pattern=r"^check_join$",
         )
     )
 
@@ -894,7 +893,8 @@ def create_bot():
         MessageHandler(
             filters.ALL & ~filters.COMMAND,
             text_buttons,
-        )
+        ),
+        group=0,
     )
 
     app.add_handler(
