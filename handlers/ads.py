@@ -261,7 +261,7 @@ async def receive_group(
 
         print(
             "ADD ADVERTISING GROUP ERROR:",
-            type(e).name,
+            type(e).__name__,
             str(e),
         )
 

@@ -175,8 +175,8 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = ReplyKeyboardMarkup(
             [
                 [
-                    "➕ افزودن کانال / گروه",
-                    "📋 کانال‌های ثبت شده",
+                    "➕ افزودن انتقال",
+                    "📋 انتقال‌های ثبت شده",
                 ],
                 [
                     "📚 آموزش استفاده",
@@ -233,8 +233,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = ReplyKeyboardMarkup(
                 [
                     [
-                        "➕ افزودن کانال / گروه",
-                        "📋 کانال‌های ثبت شده",
+                        "➕ افزودن انتقال",
+                        "📋 انتقال‌های ثبت شده",
                     ],
                     [
                         "📚 آموزش استفاده",
@@ -515,8 +515,8 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text if update.message.text else ""
 
     MAIN_BUTTONS = [
-        "➕ افزودن کانال / گروه",
-        "📋 کانال‌های ثبت شده",
+        "➕ افزودن انتقال",
+        "📋 انتقال‌های ثبت شده",
         "📚 آموزش استفاده",
         "💬 ارتباط با پشتیبانی",
         "📢 کانال",
@@ -626,7 +626,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # انتخاب نوع افزودن
     # =========================
 
-    if text == "➕ افزودن کانال / گروه":
+    if text == "➕ افزودن انتقال":
 
         keyboard = ReplyKeyboardMarkup(
             [
@@ -659,10 +659,14 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = ReplyKeyboardMarkup(
             [
-                ["➕ افزودن کانال / گروه"],
-                ["📋 کانال‌های ثبت شده"],
-                ["📚 آموزش استفاده"],
-                ["💬 ارتباط با پشتیبانی"],
+                [
+                    "📋 انتقال‌های ثبت شده",
+                    "➕ افزودن انتقال",
+                ],
+                [
+                    "💬 ارتباط با پشتیبانی",
+                    "📚 آموزش استفاده",
+                ],
             ],
             resize_keyboard=True,
         )
@@ -678,7 +682,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # دکمه‌های اصلی
     # =========================
 
-    if text == "📋 کانال‌های ثبت شده":
+    if text == "📋 انتقال‌های ثبت شده":
 
         await registered_channels(update, context)
 
@@ -775,7 +779,7 @@ def create_bot():
                 ]
             },
             fallbacks=[],
-            per_message=True,
+            per_message=False,
         )
     )
 
