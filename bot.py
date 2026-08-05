@@ -9,9 +9,16 @@ from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
+    ConversationHandler,
     MessageHandler,
     ContextTypes,
     filters,
+)
+
+from handlers.ads import (
+    ads_buttons,
+    receive_group,
+    WAIT_GROUP,
 )
 
 from handlers.connect_account import (
@@ -50,6 +57,7 @@ from handlers.connect_account import append_lines_setting
 from database import set_append_last_lines
 from config import ADMIN_ID
 from telegram import KeyboardButton, ReplyKeyboardMarkup
+from handlers.ads import ads_panel
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -205,15 +213,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 resize_keyboard=True,
             )
 
-            await update.message.reply_text(
-                f"""👋 <b>سلام {first_name}، به ربات مدیریت کانال | RunSpace خوش اومدی 🚀</b>
+            if not context.user_data.get("started"):
+
+                context.user_data["started"] = True
+
+                await update.message.reply_text(
+                    f"""👋 <b>سلام {first_name}، به ربات مدیریت کانال | RunSpace خوش اومدی 🚀</b>
 
 ✨ با این ربات می‌تونی کانالت رو بهتر مدیریت کنی.
 
 ⚠️ <b>قبل از استفاده، حتماً نکات مهم رو از بخش آموزش بخون.</b>""",
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
+                    parse_mode="HTML",
+                    reply_markup=keyboard,
+                )
+
+            else:
+
+                await update.message.reply_text(
+                    "✅ <b>به منوی اصلی بازگشتید.</b>",
+                    parse_mode="HTML",
+                    reply_markup=keyboard,
+                )
 
             return
 
@@ -649,6 +669,40 @@ def create_bot():
         CommandHandler(
             "start",
             start,
+        )
+    )
+
+    app.add_handler(
+        CommandHandler(
+            "ads",
+            ads_panel,
+        )
+    )
+
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[
+                CallbackQueryHandler(
+                    ads_buttons,
+                    pattern="^ads_add_group$",
+                )
+            ],
+            states={
+                WAIT_GROUP: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND,
+                        receive_group,
+                    )
+                ]
+            },
+            fallbacks=[],
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            ads_buttons,
+            pattern=r"^ads_(groups|group_\d+)$",
         )
     )
 

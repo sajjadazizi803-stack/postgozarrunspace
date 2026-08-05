@@ -355,3 +355,189 @@ def get_transfer_by_id(transfer_id):
         return None
 
     return dict(row)
+
+
+# ================= ADVERTISING GROUPS =================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS advertising_groups(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id INTEGER,
+    group_username TEXT,
+    group_id INTEGER,
+    title TEXT,
+    interval_minutes INTEGER DEFAULT 10,
+    enabled INTEGER DEFAULT 0,
+    message_type TEXT DEFAULT 'text',
+    message_text TEXT,
+    forward_chat_id INTEGER,
+    forward_message_id INTEGER
+)
+""")
+
+db.commit()
+
+
+def add_advertising_group(
+    telegram_id,
+    group_username,
+    group_id=None,
+    title=None,
+):
+
+    cursor.execute(
+        """
+        INSERT INTO advertising_groups
+        (
+            telegram_id,
+            group_username,
+            group_id,
+            title
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            telegram_id,
+            group_username,
+            group_id,
+            title,
+        ),
+    )
+
+    db.commit()
+
+    return cursor.lastrowid
+
+
+def get_advertising_groups(telegram_id):
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            telegram_id,
+            group_username,
+            group_id,
+            title,
+            interval_minutes,
+            enabled,
+            message_type,
+            message_text,
+            forward_chat_id,
+            forward_message_id
+        FROM advertising_groups
+        WHERE telegram_id = ?
+        ORDER BY id DESC
+        """,
+        (telegram_id,),
+    )
+
+    return cursor.fetchall()
+
+
+def get_advertising_group(group_id):
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            telegram_id,
+            group_username,
+            group_id,
+            title,
+            interval_minutes,
+            enabled,
+            message_type,
+            message_text,
+            forward_chat_id,
+            forward_message_id
+        FROM advertising_groups
+        WHERE id = ?
+        """,
+        (group_id,),
+    )
+
+    return cursor.fetchone()
+
+
+def delete_advertising_group(group_id):
+
+    cursor.execute(
+        """
+        DELETE FROM advertising_groups
+        WHERE id = ?
+        """,
+        (group_id,),
+    )
+
+    db.commit()
+
+
+def update_ad_interval(
+    group_id,
+    minutes,
+):
+
+    cursor.execute(
+        """
+        UPDATE advertising_groups
+        SET interval_minutes = ?
+        WHERE id = ?
+        """,
+        (
+            minutes,
+            group_id,
+        ),
+    )
+
+    db.commit()
+
+
+def update_ad_enabled(
+    group_id,
+    enabled,
+):
+
+    cursor.execute(
+        """
+        UPDATE advertising_groups
+        SET enabled = ?
+        WHERE id = ?
+        """,
+        (
+            enabled,
+            group_id,
+        ),
+    )
+
+    db.commit()
+
+
+def update_ad_message(
+    group_id,
+    message_type,
+    message_text=None,
+    forward_chat_id=None,
+    forward_message_id=None,
+):
+
+    cursor.execute(
+        """
+        UPDATE advertising_groups
+        SET
+            message_type = ?,
+            message_text = ?,
+            forward_chat_id = ?,
+            forward_message_id = ?
+        WHERE id = ?
+        """,
+        (
+            message_type,
+            message_text,
+            forward_chat_id,
+            forward_message_id,
+            group_id,
+        ),
+    )
+
+    db.commit()
