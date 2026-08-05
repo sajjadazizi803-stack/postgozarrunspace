@@ -61,7 +61,7 @@ from config import ADMIN_ID
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from handlers.ads import ads_panel
 from conversation import State
-from handlers.ads import add_group
+from handlers.ads import receive_group
 
 CHANNEL_USERNAME = "@SADSSCS"
 
