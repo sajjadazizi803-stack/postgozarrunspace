@@ -764,33 +764,35 @@ def create_bot():
         )
     )
 
-    ConversationHandler(
-        entry_points=[
-            CallbackQueryHandler(
-                ads_buttons,
-                pattern="^ads_add_group$",
-            ),
-            CallbackQueryHandler(
-                ads_buttons,
-                pattern="^ads_time_.*$",
-            ),
-        ],
-        states={
-            WAIT_GROUP: [
-                MessageHandler(
-                    filters.TEXT & ~filters.COMMAND,
-                    receive_group,
-                )
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[
+                CallbackQueryHandler(
+                    ads_buttons,
+                    pattern="^ads_add_group$",
+                ),
+                CallbackQueryHandler(
+                    ads_buttons,
+                    pattern="^ads_time_.*$",
+                ),
             ],
-            WAIT_INTERVAL: [
-                MessageHandler(
-                    filters.TEXT & ~filters.COMMAND,
-                    receive_interval,
-                )
-            ],
-        },
-        fallbacks=[],
-        per_message=False,
+            states={
+                WAIT_GROUP: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND,
+                        receive_group,
+                    )
+                ],
+                WAIT_INTERVAL: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND,
+                        receive_interval,
+                    )
+                ],
+            },
+            fallbacks=[],
+            per_message=False,
+        )
     )
 
     app.add_handler(
