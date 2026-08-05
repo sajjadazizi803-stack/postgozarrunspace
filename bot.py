@@ -521,7 +521,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💬 ارتباط با پشتیبانی",
         "📢 کانال",
         "👥 گروه",
-        "🔙 بازگشت",
+        "🔙",
     ]
 
     if text in MAIN_BUTTONS:
@@ -631,7 +631,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = ReplyKeyboardMarkup(
             [
                 ["📢 کانال", "👥 گروه"],
-                ["🔙 بازگشت"],
+                ["🔙"],
             ],
             resize_keyboard=True,
         )
