@@ -44,8 +44,15 @@ async def ads_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     await update.message.reply_text(
-        "📢 پنل تبلیغات",
+        """📢 <b>پنل مدیریت تبلیغات</b>
+
+به بخش مدیریت تبلیغات خوش آمدید.
+
+از طریق دکمه‌های زیر می‌توانید گروه‌های تبلیغاتی خود را مدیریت کنید، گروه جدید اضافه کنید و تنظیمات تبلیغات را انجام دهید.
+
+👇 <b>برای ادامه، یکی از گزینه‌های زیر را انتخاب کنید:</b>""",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
     )
 
 
