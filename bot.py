@@ -18,7 +18,9 @@ from telegram.ext import (
 from handlers.ads import (
     ads_buttons,
     receive_group,
+    receive_interval,
     WAIT_GROUP,
+    WAIT_INTERVAL,
 )
 
 from handlers.connect_account import (
@@ -762,25 +764,33 @@ def create_bot():
         )
     )
 
-    app.add_handler(
-        ConversationHandler(
-            entry_points=[
-                CallbackQueryHandler(
-                    ads_buttons,
-                    pattern="^ads_add_group$",
+    ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                ads_buttons,
+                pattern="^ads_add_group$",
+            ),
+            CallbackQueryHandler(
+                ads_buttons,
+                pattern="^ads_time_.*$",
+            ),
+        ],
+        states={
+            WAIT_GROUP: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    receive_group,
                 )
             ],
-            states={
-                WAIT_GROUP: [
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND,
-                        receive_group,
-                    )
-                ]
-            },
-            fallbacks=[],
-            per_message=False,
-        )
+            WAIT_INTERVAL: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    receive_interval,
+                )
+            ],
+        },
+        fallbacks=[],
+        per_message=False,
     )
 
     app.add_handler(

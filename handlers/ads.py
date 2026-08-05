@@ -18,7 +18,8 @@ from database import (
 )
 
 WAIT_GROUP = 100
-
+WAIT_INTERVAL = 101
+CURRENT_AD_GROUP = "CURRENT_AD_GROUP"
 
 # ---------------------- ads panel --------------------
 
@@ -69,6 +70,18 @@ async def ads_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("آیدی یا یوزرنیم گروه تبلیغاتی را ارسال کن.")
 
         return WAIT_GROUP
+
+    elif query.data.startswith("ads_time_"):
+
+        group_id = int(query.data.split("_")[2])
+
+        context.user_data[CURRENT_AD_GROUP] = group_id
+
+        await query.message.reply_text(
+            "⏰ لطفاً تعداد دقیقه را ارسال کنید.\n\nمثال:\n60"
+        )
+
+        return WAIT_INTERVAL
 
     elif query.data == "ads_groups":
 
@@ -356,7 +369,11 @@ async def ads_group_info(
             InlineKeyboardButton(
                 "⏰ زمان‌بندی",
                 callback_data=f"ads_time_{group_id}",
-            )
+            ),
+            InlineKeyboardButton(
+                "📝 پیام",
+                callback_data=f"ads_message_{group_id}",
+            ),
         ],
         [
             InlineKeyboardButton(
@@ -370,19 +387,13 @@ async def ads_group_info(
         ],
         [
             InlineKeyboardButton(
-                "📝 پیام",
-                callback_data=f"ads_message_{group_id}",
-            ),
-            InlineKeyboardButton(
                 "📨 فورواردی",
                 callback_data=f"ads_forward_{group_id}",
             ),
-        ],
-        [
             InlineKeyboardButton(
                 "🗑 حذف گروه",
                 callback_data=f"ads_delete_{group_id}",
-            )
+            ),
         ],
         [
             InlineKeyboardButton(
@@ -403,3 +414,107 @@ async def ads_group_info(
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
+
+
+# ---------------------- receive interval --------------------
+
+
+async def receive_interval(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    if update.effective_user.id != ADMIN_ID:
+        return ConversationHandler.END
+
+    text = (update.message.text or "").strip()
+
+    if not text.isdigit():
+
+        await update.message.reply_text("❌ فقط عدد ارسال کنید.")
+
+        return WAIT_INTERVAL
+
+    minutes = int(text)
+
+    if minutes < 1:
+
+        await update.message.reply_text("❌ حداقل مقدار 1 دقیقه است.")
+
+        return WAIT_INTERVAL
+
+    group_id = context.user_data.get(CURRENT_AD_GROUP)
+
+    if group_id is None:
+        return ConversationHandler.END
+
+    from database import update_ad_interval
+
+    update_ad_interval(
+        group_id,
+        minutes,
+    )
+
+    await update.message.reply_text("✅ زمان‌بندی ذخیره شد.")
+
+    group = get_advertising_group(group_id)
+
+    status = "🟢 فعال" if group[6] else "🔴 متوقف"
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "⏰ زمان‌بندی",
+                callback_data=f"ads_time_{group_id}",
+            ),
+            InlineKeyboardButton(
+                "📝 پیام",
+                callback_data=f"ads_message_{group_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "▶️ شروع تبلیغات",
+                callback_data=f"ads_start_{group_id}",
+            ),
+            InlineKeyboardButton(
+                "🛑 توقف",
+                callback_data=f"ads_stop_{group_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "📨 فورواردی",
+                callback_data=f"ads_forward_{group_id}",
+            ),
+            InlineKeyboardButton(
+                "🗑 حذف گروه",
+                callback_data=f"ads_delete_{group_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="ads_groups",
+            )
+        ],
+    ]
+
+    await update.message.reply_text(
+        f"""📢 <b>اطلاعات گروه تبلیغاتی</b>
+
+👥 گروه: {group[4] or "نامشخص"}
+🔗 یوزرنیم: {group[2]}
+🆔 شناسه: {group[3]}
+⏱ فاصله ارسال: {group[5]} دقیقه
+📊 وضعیت: {status}""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+    context.user_data.pop(
+        CURRENT_AD_GROUP,
+        None,
+    )
+
+    return ConversationHandler.END
