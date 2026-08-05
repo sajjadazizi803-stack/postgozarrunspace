@@ -660,12 +660,12 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = ReplyKeyboardMarkup(
             [
                 [
-                    "📋 انتقال‌های ثبت شده",
                     "➕ افزودن انتقال",
+                    "📋 انتقال‌های ثبت شده",
                 ],
                 [
-                    "💬 ارتباط با پشتیبانی",
                     "📚 آموزش استفاده",
+                    "💬 ارتباط با پشتیبانی",
                 ],
             ],
             resize_keyboard=True,

@@ -292,7 +292,7 @@ async def ads_groups(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not groups:
 
-        await query.edit_message_text("❌ هنوز هیچ گروهی ثبت نشده است.")
+        await query.message.reply_text("❌ هنوز هیچ گروهی ثبت نشده است.")
         return
 
     keyboard = []

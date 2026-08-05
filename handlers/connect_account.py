@@ -511,7 +511,7 @@ async def registered_channels(update: Update, context: ContextTypes.DEFAULT_TYPE
     transfers = get_user_transfers(user_id)
 
     if not transfers:
-        await update.message.reply_text("❌ هنوز هیچ کانالی ثبت نکرده‌اید.")
+        await update.message.reply_text("❌ هنوز هیچ انتقالی ثبت نکرده‌اید.")
         return
 
     keyboard = []
