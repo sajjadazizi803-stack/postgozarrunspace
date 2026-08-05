@@ -58,6 +58,7 @@ from database import set_append_last_lines
 from config import ADMIN_ID
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from handlers.ads import ads_panel
+from conversation import State
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -72,7 +73,22 @@ from handlers.connect_account import (
 
 
 def clear_waiting_state(context):
+
     context.user_data["state"] = State.NONE
+
+    context.user_data.pop("source_channel", None)
+    context.user_data.pop("target_channel", None)
+    context.user_data.pop("pending_source", None)
+    context.user_data.pop("pending_target", None)
+
+    context.user_data.pop("changing_source", None)
+    context.user_data.pop("changing_target", None)
+
+    context.user_data.pop("change_source_transfer_id", None)
+    context.user_data.pop("change_target_transfer_id", None)
+
+    context.user_data.pop("remove_lines_transfer_id", None)
+    context.user_data.pop("append_lines_transfer_id", None)
 
 
 # ---------------------- training keyboard --------------------
@@ -495,9 +511,14 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     if text in MAIN_BUTTONS:
+
         clear_waiting_state(context)
 
-    state = user_data.get("state", State.NONE)
+        state = State.NONE
+
+        user_data["state"] = State.NONE
+
+        state = user_data.get("state", State.NONE)
 
     # =========================
     # دریافت کانال مبدا
@@ -696,6 +717,7 @@ def create_bot():
                 ]
             },
             fallbacks=[],
+            per_message=True,
         )
     )
 
