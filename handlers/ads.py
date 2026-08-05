@@ -79,6 +79,37 @@ async def ads_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return ConversationHandler.END
 
+    elif query.data == "ads_back":
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "➕ افزودن گروه تبلیغاتی",
+                    callback_data="ads_add_group",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📋 گروه های ثبت شده",
+                    callback_data="ads_groups",
+                )
+            ],
+        ]
+
+        await query.edit_message_text(
+            """📢 <b>پنل مدیریت تبلیغات</b>
+
+به بخش مدیریت تبلیغات خوش آمدید.
+
+از طریق دکمه‌های زیر می‌توانید گروه‌های تبلیغاتی خود را مدیریت کنید، گروه جدید اضافه کنید و تنظیمات تبلیغات را انجام دهید.
+
+👇 <b>برای ادامه، یکی از گزینه‌های زیر را انتخاب کنید:</b>""",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+        return ConversationHandler.END
+
     elif query.data.startswith("ads_group_"):
 
         await ads_group_info(
@@ -240,14 +271,9 @@ async def receive_group(
 
     await update.message.reply_text(f"""✅ گروه با موفقیت ثبت شد.
 
-📢 نام گروه:
-{title or "نامشخص"}
-
-🔗 یوزرنیم:
-{group_username}
-
-🆔 شناسه:
-{telegram_group_id}""")
+📢 نام گروه: {title or "نامشخص"}
+🔗 یوزرنیم: {group_username}
+🆔 شناسه: {telegram_group_id}""")
 
     return ConversationHandler.END
 
@@ -292,8 +318,11 @@ async def ads_groups(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await query.edit_message_text(
-        "📋 گروه‌های ثبت شده:",
+        """📋 <b>گروه‌های ثبت‌شده شما</b>
+
+برای مشاهده اطلاعات و تنظیمات هر گروه، روی گروه موردنظر از لیست زیر کلیک کنید.""",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
     )
 
 
