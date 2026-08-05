@@ -69,6 +69,21 @@ from handlers.connect_account import (
     finish_change_target,
 )
 
+# ---------------------- add menu --------------------
+
+ADD_MENU = ReplyKeyboardMarkup(
+    [
+        [
+            "📢 کانال",
+            "👥 گروه",
+        ],
+        [
+            "🔙",
+        ],
+    ],
+    resize_keyboard=True,
+)
+
 # ---------------------- clear waiting state --------------------
 
 
@@ -160,7 +175,7 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = ReplyKeyboardMarkup(
             [
                 [
-                    "📢 افزودن کانال",
+                    "➕ افزودن کانال / گروه",
                     "📋 کانال‌های ثبت شده",
                 ],
                 [
@@ -218,7 +233,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = ReplyKeyboardMarkup(
                 [
                     [
-                        "📢 افزودن کانال",
+                        "➕ افزودن کانال / گروه",
                         "📋 کانال‌های ثبت شده",
                     ],
                     [
@@ -497,28 +512,25 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_data is None:
         return
 
-    # ------------------------
-    # پاسخ پشتیبانی (ادمین)
-    # ------------------------
-
     text = update.message.text if update.message.text else ""
 
     MAIN_BUTTONS = [
-        "📢 افزودن کانال",
+        "➕ افزودن کانال / گروه",
         "📋 کانال‌های ثبت شده",
         "📚 آموزش استفاده",
         "💬 ارتباط با پشتیبانی",
+        "📢 کانال",
+        "👥 گروه",
+        "🔙 بازگشت",
     ]
 
     if text in MAIN_BUTTONS:
 
         clear_waiting_state(context)
 
-        state = State.NONE
-
         user_data["state"] = State.NONE
 
-        state = user_data.get("state", State.NONE)
+    state = user_data.get("state", State.NONE)
 
     # =========================
     # دریافت کانال مبدا
@@ -611,14 +623,60 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # =========================
-    # دکمه‌های اصلی
+    # انتخاب نوع افزودن
     # =========================
 
-    if text == "📢 افزودن کانال":
+    if text == "➕ افزودن کانال / گروه":
+
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["📢 کانال", "👥 گروه"],
+                ["🔙 بازگشت"],
+            ],
+            resize_keyboard=True,
+        )
+
+        await update.message.reply_text(
+            "نوع را انتخاب کنید:",
+            reply_markup=keyboard,
+        )
+
+        return
+
+    if text == "📢 کانال":
 
         await connect_account(update, context)
 
         return
+
+    if text == "👥 گروه":
+
+        await add_group(update, context)
+
+        return
+
+    if text == "🔙":
+
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["➕ افزودن کانال / گروه"],
+                ["📋 کانال‌های ثبت شده"],
+                ["📚 آموزش استفاده"],
+                ["💬 ارتباط با پشتیبانی"],
+            ],
+            resize_keyboard=True,
+        )
+
+        await update.message.reply_text(
+            "منوی اصلی",
+            reply_markup=keyboard,
+        )
+
+        return
+
+    # =========================
+    # دکمه‌های اصلی
+    # =========================
 
     if text == "📋 کانال‌های ثبت شده":
 
