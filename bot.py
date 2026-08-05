@@ -702,7 +702,7 @@ def create_bot():
     app.add_handler(
         CallbackQueryHandler(
             ads_buttons,
-            pattern=r"^ads_(groups|group_\d+)$",
+            pattern=r"^ads_",
         )
     )
 

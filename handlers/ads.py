@@ -409,20 +409,11 @@ async def ads_group_info(
     await query.edit_message_text(
         f"""📢 <b>اطلاعات گروه تبلیغاتی</b>
 
-👥 گروه:
-{group[4] or "نامشخص"}
-
-🔗 یوزرنیم:
-{group[2]}
-
-🆔 شناسه:
-{group[3]}
-
-⏱ فاصله ارسال:
-{group[5]} دقیقه
-
-📊 وضعیت:
-{status}""",
+👥 گروه: {group[4] or "نامشخص"}
+🔗 یوزرنیم: {group[2]}
+🆔 شناسه: {group[3]}
+⏱ فاصله ارسال: {group[5]} دقیقه
+📊 وضعیت: {status}""",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
