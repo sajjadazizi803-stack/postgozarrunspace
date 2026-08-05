@@ -133,15 +133,29 @@ async def receive_group(
     if update.effective_user.id != ADMIN_ID:
         return ConversationHandler.END
 
-    group_input = update.message.text.strip()
+    # اگر کاربر دستور یا یکی از دکمه‌های کیبورد را زد،
+    # از حالت افزودن گروه خارج شو.
+    text = (update.message.text or "").strip()
+
+    if text.startswith("/"):
+        return ConversationHandler.END
+
+    MAIN_KEYBOARD = {
+        "🏠 خانه",
+        "➕ اتصال کانال‌ها",
+        "📋 کانال‌های ثبت شده",
+        "👤 حساب کاربری",
+        "💬 پشتیبانی",
+    }
+
+    if text in MAIN_KEYBOARD:
+        return ConversationHandler.END
+
+    group_input = text
 
     if not group_input:
         await update.message.reply_text("❌ یوزرنیم یا آیدی گروه را ارسال کنید.")
         return WAIT_GROUP
-
-    # -----------------------------
-    # فقط گروه عمومی
-    # -----------------------------
 
     if group_input.startswith("https://t.me/"):
         group_input = group_input.replace(
@@ -160,10 +174,6 @@ async def receive_group(
     if not group_input.startswith("@"):
         group_input = "@" + group_input
 
-    # -----------------------------
-    # دریافت اطلاعات گروه
-    # -----------------------------
-
     try:
 
         entity = await tg_client.get_entity(group_input)
@@ -176,17 +186,12 @@ async def receive_group(
 
         return WAIT_GROUP
 
-    # -----------------------------
-    # بررسی گروه بودن
-    # -----------------------------
-
     if not isinstance(entity, (Chat, Channel)):
 
         await update.message.reply_text("❌ این آدرس مربوط به یک گروه نیست.")
 
         return WAIT_GROUP
 
-    # Channel می‌تواند کانال باشد
     if isinstance(entity, Channel):
 
         if getattr(entity, "broadcast", False):
@@ -204,23 +209,10 @@ async def receive_group(
 
             return WAIT_GROUP
 
-    # -----------------------------
-    # اطلاعات گروه
-    # -----------------------------
-
     telegram_group_id = entity.id
 
-    title = getattr(
-        entity,
-        "title",
-        None,
-    )
-
-    username = getattr(
-        entity,
-        "username",
-        None,
-    )
+    title = getattr(entity, "title", None)
+    username = getattr(entity, "username", None)
 
     if not username:
 
@@ -230,11 +222,9 @@ async def receive_group(
 
     group_username = f"@{username}"
 
-    # -----------------------------
-    # جلوگیری از ثبت تکراری
-    # -----------------------------
-
-    existing_groups = get_advertising_groups(update.effective_user.id)
+    existing_groups = get_advertising_groups(
+        update.effective_user.id,
+    )
 
     for existing in existing_groups:
 
@@ -243,10 +233,6 @@ async def receive_group(
             await update.message.reply_text("⚠️ این گروه قبلاً ثبت شده است.")
 
             return ConversationHandler.END
-
-    # -----------------------------
-    # ذخیره
-    # -----------------------------
 
     try:
 

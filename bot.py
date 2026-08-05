@@ -95,15 +95,14 @@ def clear_waiting_state(context):
     context.user_data.pop("target_channel", None)
     context.user_data.pop("pending_source", None)
     context.user_data.pop("pending_target", None)
-
     context.user_data.pop("changing_source", None)
     context.user_data.pop("changing_target", None)
-
     context.user_data.pop("change_source_transfer_id", None)
     context.user_data.pop("change_target_transfer_id", None)
-
     context.user_data.pop("remove_lines_transfer_id", None)
     context.user_data.pop("append_lines_transfer_id", None)
+    context.user_data.pop("conversation", None)
+    context.user_data.pop("wait_group", None)
 
 
 # ---------------------- training keyboard --------------------
@@ -637,7 +636,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text(
-            "نوع را انتخاب کنید:",
+            "نوع انتقال را انتخاب کنید:",
             reply_markup=keyboard,
         )
 
@@ -672,8 +671,9 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text(
-            "منوی اصلی",
+            "✅ <b>به منوی اصلی بازگشتید.</b>",
             reply_markup=keyboard,
+            parse_mode="HTML",
         )
 
         return
