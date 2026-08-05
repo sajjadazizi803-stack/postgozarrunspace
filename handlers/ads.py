@@ -61,39 +61,31 @@ async def ads_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def ads_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     query = update.callback_query
     await query.answer()
 
     if query.data == "ads_add_group":
+        context.user_data["ads_state"] = "WAIT_GROUP"
 
         await query.message.reply_text("آیدی یا یوزرنیم گروه تبلیغاتی را ارسال کن.")
-
-        return WAIT_GROUP
+        return
 
     elif query.data.startswith("ads_time_"):
-
         group_id = int(query.data.split("_")[2])
 
         context.user_data[CURRENT_AD_GROUP] = group_id
+        context.user_data["ads_state"] = "WAIT_INTERVAL"
 
         await query.message.reply_text(
             "⏰ لطفاً تعداد دقیقه را ارسال کنید.\n\nمثال:\n60"
         )
-
-        return WAIT_INTERVAL
+        return
 
     elif query.data == "ads_groups":
-
-        await ads_groups(
-            update,
-            context,
-        )
-
-        return ConversationHandler.END
+        await ads_groups(update, context)
+        return
 
     elif query.data == "ads_back":
-
         keyboard = [
             [
                 InlineKeyboardButton(
@@ -120,19 +112,11 @@ async def ads_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="HTML",
         )
-
-        return ConversationHandler.END
+        return
 
     elif query.data.startswith("ads_group_"):
-
-        await ads_group_info(
-            update,
-            context,
-        )
-
-        return ConversationHandler.END
-
-    return ConversationHandler.END
+        await ads_group_info(update, context)
+        return
 
 
 # ---------------------- receive group --------------------
@@ -274,6 +258,7 @@ async def receive_group(
 🔗 یوزرنیم: {group_username}
 🆔 شناسه: {telegram_group_id}""")
 
+    context.user_data.pop("ads_state", None)
     return ConversationHandler.END
 
 

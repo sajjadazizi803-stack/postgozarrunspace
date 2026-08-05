@@ -531,7 +531,15 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_data["state"] = State.NONE
 
-    state = user_data.get("state", State.NONE)
+        state = user_data.get("state", State.NONE)
+
+        if user_data.get("ads_state") == "WAIT_GROUP":
+            await receive_group(update, context)
+            return
+
+        if user_data.get("ads_state") == "WAIT_INTERVAL":
+            await receive_interval(update, context)
+            return
 
     # =========================
     # دریافت کانال مبدا
