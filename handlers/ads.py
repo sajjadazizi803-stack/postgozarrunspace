@@ -36,9 +36,7 @@ async def start_group_sender(application, group_id):
 
     async def worker():
 
-        from database import (
-            get_advertising_group,
-        )
+        from database import get_advertising_group
 
         while True:
 
@@ -49,37 +47,52 @@ async def start_group_sender(application, group_id):
                 if not group:
                     break
 
-                enabled = bool(group[6])
-
-                if not enabled:
+                if not bool(group[6]):
                     break
 
                 interval = int(group[5])
 
-                source_chat_id = group[11]
-                source_message_id = group[12]
-
                 target = group[2]
 
-                if source_chat_id and source_message_id:
+                message_type = group[7]
+                message_text = group[8]
 
-                    try:
+                forward_chat_id = group[9]
+                forward_message_id = group[10]
 
-                        await tg_client.forward_messages(
-                            entity=target,
-                            messages=source_message_id,
-                            from_peer=source_chat_id,
-                        )
+                try:
 
-                    except Exception:
-                        pass
+                    if message_type == "text":
+
+                        if message_text:
+
+                            await tg_client.send_message(
+                                entity=target,
+                                message=message_text,
+                            )
+
+                    elif message_type == "forward":
+
+                        if forward_chat_id and forward_message_id:
+
+                            await tg_client.forward_messages(
+                                entity=target,
+                                messages=int(forward_message_id),
+                                from_peer=int(forward_chat_id),
+                            )
+
+                except Exception as e:
+
+                    print(f"[ADS SEND ERROR] {e}")
 
                 await asyncio.sleep(interval * 60)
 
             except asyncio.CancelledError:
                 break
 
-            except Exception:
+            except Exception as e:
+
+                print(f"[ADS WORKER ERROR] {e}")
 
                 await asyncio.sleep(10)
 
