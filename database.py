@@ -587,3 +587,24 @@ def update_ad_status(group_id, status):
 
     conn.commit()
     conn.close()
+
+
+def set_advertising_group_enabled(group_id, enabled):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE advertising_groups
+        SET enabled=?
+        WHERE id=?
+        """,
+        (
+            1 if enabled else 0,
+            group_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
