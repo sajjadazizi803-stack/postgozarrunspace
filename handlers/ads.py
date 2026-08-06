@@ -414,10 +414,15 @@ async def ads_message(
 
     group_id = int(query.data.split("_")[2])
 
-    context.user_data["ads_group_id"] = group_id
-    context.user_data["ads_waiting_message"] = True
+    context.user_data[CURRENT_AD_GROUP] = group_id
+    context.user_data["ads_state"] = "WAIT_MESSAGE"
 
-    await query.message.reply_text("📨 پیام یا بنر تبلیغاتی را ارسال کنید.")
+    print(f"[ADS] Waiting message for group {group_id}")
+
+    await query.message.reply_text(
+        "📨 پیام تبلیغاتی را ارسال کنید.\n\n"
+        "می‌توانید متن، عکس، ویدیو، فایل، گیف یا هر نوع پیام دیگری ارسال کنید."
+    )
 
 
 # ---------------------- receive interval --------------------
@@ -531,17 +536,19 @@ async def receive_ads_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    if not context.user_data.get("ads_waiting_message"):
-        return
 
     if update.effective_user.id != ADMIN_ID:
         return
 
-    group_id = context.user_data["ads_group_id"]
-    message = update.effective_message
+    if context.user_data.get("ads_state") != "WAIT_MESSAGE":
+        return
 
-    context.user_data.pop("ads_waiting_message", None)
-    context.user_data.pop("ads_group_id", None)
+    group_id = context.user_data.get(CURRENT_AD_GROUP)
+
+    if not group_id:
+        return
+
+    message = update.effective_message
 
     conn = get_connection()
     cur = conn.cursor()
@@ -549,10 +556,14 @@ async def receive_ads_message(
     cur.execute(
         """
         UPDATE advertising_groups
-        SET source_chat_id = ?, source_message_id = ?
+        SET 
+            message_type = ?,
+            forward_chat_id = ?,
+            forward_message_id = ?
         WHERE id = ?
         """,
         (
+            "forward",
             message.chat_id,
             message.message_id,
             group_id,
@@ -562,16 +573,14 @@ async def receive_ads_message(
     conn.commit()
     conn.close()
 
-    print(
-        f"[ADS] Message Saved -> group={group_id} chat={message.chat_id} message={message.message_id}"
+    context.user_data.pop(
+        "ads_state",
+        None,
     )
 
-    await message.reply_text("✅ پیام تبلیغاتی با موفقیت ثبت شد.")
+    context.user_data.pop(
+        CURRENT_AD_GROUP,
+        None,
+    )
 
-    group = get_advertising_group(group_id)
-
-    if group and group[6]:
-        await start_group_sender(
-            context.application,
-            group_id,
-        )
+    await message.reply_text("✅ پیام تبلیغاتی ذخیره شد.")

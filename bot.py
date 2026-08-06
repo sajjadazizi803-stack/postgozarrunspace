@@ -191,7 +191,7 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await query.message.edit_text(
-            f"""👋 <b>سلام {query.from_user.first_name}، به ربات مدیریت کانال | RunSpace خوش اومدی 🚀</b>
+            f"""👋 <b>سلام {query.from_user.first_name}، به ربات RunSpace خوش اومدی 🚀</b>
 
 ✨ با این ربات می‌تونی کانالت رو بهتر مدیریت کنی.
 
@@ -253,7 +253,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data["started"] = True
 
                 await update.message.reply_text(
-                    f"""👋 <b>سلام {first_name}، به ربات مدیریت کانال | RunSpace خوش اومدی 🚀</b>
+                    f"""👋 <b>سلام {first_name}، به ربات RunSpace خوش اومدی 🚀</b>
 
 ✨ با این ربات می‌تونی کانالت رو بهتر مدیریت کنی.
 
@@ -747,155 +747,66 @@ async def conversation_router(update, context):
 
 
 def create_bot():
-
     app = Application.builder().token(config.BOT_TOKEN).build()
 
     from telegram.ext import CallbackQueryHandler
 
-    app.add_handler(
-        CommandHandler(
-            "start",
-            start,
-        )
-    )
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("ads", ads_panel))
 
+    app.add_handler(CallbackQueryHandler(check_join, pattern=r"^check_join$"))
+    app.add_handler(CallbackQueryHandler(ads_buttons, pattern=r"^ads_"))
+    app.add_handler(CallbackQueryHandler(transfer_info, pattern=r"^transfer_\d+$"))
     app.add_handler(
-        CommandHandler(
-            "ads",
-            ads_panel,
-        )
+        CallbackQueryHandler(delete_transfer_callback, pattern=r"^delete_\d+$")
     )
-
+    app.add_handler(
+        CallbackQueryHandler(toggle_transfer_callback, pattern=r"^toggle_\d+$")
+    )
     app.add_handler(
         CallbackQueryHandler(
-            check_join,
-            pattern=r"^check_join$",
+            back_to_registered_channels, pattern=r"^registered_channels$"
         )
     )
-
+    app.add_handler(CallbackQueryHandler(transfer_settings, pattern=r"^settings_\d+$"))
     app.add_handler(
-        CallbackQueryHandler(
-            ads_buttons,
-            pattern=r"^ads_",
-        )
+        CallbackQueryHandler(remove_lines_setting, pattern=r"^remove_lines_\d+$")
     )
-
     app.add_handler(
-        CallbackQueryHandler(
-            transfer_info,
-            pattern=r"^transfer_\d+$",
-        )
+        CallbackQueryHandler(append_lines_setting, pattern=r"^append_lines_\d+$")
     )
-
+    app.add_handler(CallbackQueryHandler(finish_transfer, pattern=r"^finish_transfer$"))
     app.add_handler(
-        CallbackQueryHandler(
-            delete_transfer_callback,
-            pattern=r"^delete_\d+$",
-        )
+        CallbackQueryHandler(change_source_callback, pattern=r"^change_source_\d+$")
     )
-
     app.add_handler(
-        CallbackQueryHandler(
-            toggle_transfer_callback,
-            pattern=r"^toggle_\d+$",
-        )
+        CallbackQueryHandler(confirm_source_callback, pattern=r"^confirm_source_\d+$")
     )
-
     app.add_handler(
-        CallbackQueryHandler(
-            back_to_registered_channels,
-            pattern=r"^registered_channels$",
-        )
+        CallbackQueryHandler(cancel_source_callback, pattern=r"^cancel_source_\d+$")
     )
-
     app.add_handler(
-        CallbackQueryHandler(
-            transfer_settings,
-            pattern=r"^settings_\d+$",
-        )
+        CallbackQueryHandler(change_target_callback, pattern=r"^change_target_\d+$")
     )
-
     app.add_handler(
-        CallbackQueryHandler(
-            remove_lines_setting,
-            pattern=r"^remove_lines_\d+$",
-        )
+        CallbackQueryHandler(confirm_target_callback, pattern=r"^confirm_target_\d+$")
     )
-
     app.add_handler(
-        CallbackQueryHandler(
-            append_lines_setting,
-            pattern=r"^append_lines_\d+$",
-        )
+        CallbackQueryHandler(cancel_target_callback, pattern=r"^cancel_target_\d+$")
     )
-
     app.add_handler(
-        CallbackQueryHandler(
-            finish_transfer,
-            pattern=r"^finish_transfer$",
-        )
+        CallbackQueryHandler(finish_change_target, pattern=r"^finish_change_target$")
     )
+    app.add_handler(CallbackQueryHandler(ads_message, pattern=r"^ads_message_\d+$"))
+    app.add_handler(CallbackQueryHandler(buttons))
 
+    # ترتیب این سه هندلر مهم است
     app.add_handler(
-        CallbackQueryHandler(
-            change_source_callback,
-            pattern=r"^change_source_\d+$",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            confirm_source_callback,
-            pattern=r"^confirm_source_\d+$",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            cancel_source_callback,
-            pattern=r"^cancel_source_\d+$",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            change_target_callback,
-            pattern=r"^change_target_\d+$",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            confirm_target_callback,
-            pattern=r"^confirm_target_\d+$",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            cancel_target_callback,
-            pattern=r"^cancel_target_\d+$",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            finish_change_target,
-            pattern=r"^finish_change_target$",
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            buttons,
-        )
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            ads_message,
-            pattern=r"^ads_message_\d+$",
-        )
+        MessageHandler(
+            filters.ALL & ~filters.COMMAND,
+            receive_ads_message,
+        ),
+        group=0,
     )
 
     app.add_handler(
@@ -903,7 +814,7 @@ def create_bot():
             filters.ALL & ~filters.COMMAND,
             text_buttons,
         ),
-        group=0,
+        group=1,
     )
 
     app.add_handler(
@@ -914,17 +825,9 @@ def create_bot():
         group=100,
     )
 
-    app.add_handler(
-        MessageHandler(
-            filters.ALL & ~filters.COMMAND,
-            receive_ads_message,
-        )
-    )
-
     app.bot_data["tg_client"] = tg_client
 
     async def startup(app):
-
         try:
             await tg_client.start()
         except Exception:
@@ -934,7 +837,6 @@ def create_bot():
             from listener import start_all_listeners
 
             await start_all_listeners()
-
         except Exception:
             pass
 
