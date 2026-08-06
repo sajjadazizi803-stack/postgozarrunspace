@@ -65,6 +65,7 @@ from telegram import KeyboardButton, ReplyKeyboardMarkup
 from handlers.ads import ads_panel
 from conversation import State
 from handlers.ads import receive_group
+from pathlib import Path
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -185,6 +186,9 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ],
                 [
                     "📚 آموزش استفاده",
+                    "📲 اتصال اکانت",
+                ],
+                [
                     "💬 ارتباط با پشتیبانی",
                 ],
             ],
@@ -243,6 +247,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ],
                     [
                         "📚 آموزش استفاده",
+                        "📲 اتصال اکانت",
+                    ],
+                    [
                         "💬 ارتباط با پشتیبانی",
                     ],
                 ],
@@ -537,6 +544,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📢 کانال",
         "👥 گروه",
         "🔙",
+        "📲 اتصال اکانت",
     ]
 
     if text in MAIN_BUTTONS:
@@ -676,6 +684,9 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ],
                 [
                     "📚 آموزش استفاده",
+                    "📲 اتصال اکانت",
+                ],
+                [
                     "💬 ارتباط با پشتیبانی",
                 ],
             ],
@@ -703,6 +714,32 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "📚 آموزش استفاده":
 
         await show_training_menu(update, context)
+
+        return
+
+    if text == "📲 اتصال اکانت":
+
+        image_path = Path(__file__).resolve().parent / "images" / "api_tutorial.png"
+
+        await update.message.reply_photo(
+            photo=open(image_path, "rb"),
+            caption="""🔐 اتصال اکانت
+
+📍 مرحله 1 از 4
+
+⚠️ حتما ابتدا بخش نکات مهم رو از قسمت آموزش استفاده مطالعه کنید.
+
+حالا مراحل زیر رو انجام بدید:
+
+1️⃣ وارد my.telegram.org بشید و شماره تلگرامتون رو وارد کنید
+2️⃣ کدی که تلگرام برای اکانتتون ارسال می‌کنه رو وارد کنید.
+3️⃣ روی API Development Tools بزنید و سپس Create Application رو انتخاب کنید.
+4️⃣ بعد از ساخت برنامه، API ID و API HASH بهتون نمایش داده میشه و هر دو رو کپی کنید
+
+📩 حالا فقط API ID رو همینجا برام ارسال کنید تا بریم مرحله بعد. 🚀""",
+        )
+
+        context.user_data["state"] = "WAIT_API_ID"
 
         return
 
