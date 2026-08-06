@@ -17,8 +17,10 @@ from telegram.ext import (
 
 from handlers.ads import (
     ads_buttons,
+    ads_message,
     receive_group,
     receive_interval,
+    receive_ads_message,
     WAIT_GROUP,
     WAIT_INTERVAL,
 )
