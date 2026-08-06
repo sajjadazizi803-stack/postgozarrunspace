@@ -890,6 +890,13 @@ def create_bot():
     )
 
     app.add_handler(
+        CallbackQueryHandler(
+            ads_message,
+            pattern=r"^ads_message_\d+$",
+        )
+    )
+
+    app.add_handler(
         MessageHandler(
             filters.ALL & ~filters.COMMAND,
             text_buttons,
@@ -903,6 +910,13 @@ def create_bot():
             admin_reply,
         ),
         group=100,
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.ALL & ~filters.COMMAND,
+            receive_ads_message,
+        )
     )
 
     app.bot_data["tg_client"] = tg_client

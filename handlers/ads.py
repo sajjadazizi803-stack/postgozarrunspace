@@ -15,7 +15,15 @@ from database import (
     add_advertising_group,
     get_advertising_groups,
     get_advertising_group,
+    get_connection,
 )
+
+# ---------------------- start group sender --------------------
+
+
+async def start_group_sender(application, group_id):
+    print(f"[ADS] Sender Started -> group={group_id}")
+
 
 WAIT_GROUP = 100
 WAIT_INTERVAL = 101
@@ -78,6 +86,18 @@ async def ads_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_text(
             "⏰ لطفاً تعداد دقیقه را ارسال کنید.\n\nمثال:\n60"
+        )
+        return
+
+    elif query.data.startswith("ads_message_"):
+        group_id = int(query.data.split("_")[2])
+
+        context.user_data[CURRENT_AD_GROUP] = group_id
+        context.user_data["ads_state"] = "WAIT_MESSAGE"
+
+        await query.message.reply_text(
+            "📨 پیام تبلیغاتی را ارسال کنید.\n\n"
+            "می‌توانید متن، عکس، ویدیو یا هر پیامی را ارسال کنید."
         )
         return
 
@@ -329,23 +349,8 @@ async def ads_group_info(
     group = get_advertising_group(group_id)
 
     if not group:
-
         await query.edit_message_text("❌ گروه پیدا نشد.")
-
         return
-
-    # ساختار جدول:
-    # 0 id
-    # 1 telegram_id
-    # 2 group_username
-    # 3 group_id
-    # 4 title
-    # 5 interval_minutes
-    # 6 enabled
-    # 7 message_type
-    # 8 message_text
-    # 9 forward_chat_id
-    # 10 forward_message_id
 
     status = "🟢 فعال" if group[6] else "🔴 متوقف"
 
@@ -362,12 +367,8 @@ async def ads_group_info(
         ],
         [
             InlineKeyboardButton(
-                "▶️ شروع تبلیغات",
-                callback_data=f"ads_start_{group_id}",
-            ),
-            InlineKeyboardButton(
-                "🛑 توقف",
-                callback_data=f"ads_stop_{group_id}",
+                "⏹ توقف انتقال" if group[6] else "▶️ شروع انتقال",
+                callback_data=f"ads_toggle_{group_id}",
             ),
         ],
         [
@@ -399,6 +400,24 @@ async def ads_group_info(
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
+
+
+# ---------------------- ads message --------------------
+
+
+async def ads_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    query = update.callback_query
+    await query.answer()
+
+    group_id = int(query.data.split("_")[2])
+
+    context.user_data["ads_group_id"] = group_id
+    context.user_data["ads_waiting_message"] = True
+
+    await query.message.reply_text("📨 پیام یا بنر تبلیغاتی را ارسال کنید.")
 
 
 # ---------------------- receive interval --------------------
@@ -503,3 +522,56 @@ async def receive_interval(
     )
 
     return ConversationHandler.END
+
+
+# ---------------------- receive ads message --------------------
+
+
+async def receive_ads_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    if not context.user_data.get("ads_waiting_message"):
+        return
+
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    group_id = context.user_data["ads_group_id"]
+    message = update.effective_message
+
+    context.user_data.pop("ads_waiting_message", None)
+    context.user_data.pop("ads_group_id", None)
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE advertising_groups
+        SET source_chat_id = ?, source_message_id = ?
+        WHERE id = ?
+        """,
+        (
+            message.chat_id,
+            message.message_id,
+            group_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+    print(
+        f"[ADS] Message Saved -> group={group_id} chat={message.chat_id} message={message.message_id}"
+    )
+
+    await message.reply_text("✅ پیام تبلیغاتی با موفقیت ثبت شد.")
+
+    group = get_advertising_group(group_id)
+
+    if group and group[6]:
+        await start_group_sender(
+            context.application,
+            group_id,
+        )
