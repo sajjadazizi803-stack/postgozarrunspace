@@ -9,7 +9,7 @@ from config import ADMIN_ID
 from telegram.ext import ConversationHandler
 from telethon.tl.types import Chat, Channel
 from telegram_client import tg_client
-
+from telethon.errors import FloodWaitError
 from telegram.ext import ConversationHandler
 from database import (
     add_advertising_group,
@@ -19,6 +19,7 @@ from database import (
 )
 
 import asyncio
+import time
 
 ads_tasks = {}
 
@@ -32,11 +33,13 @@ async def start_group_sender(application, group_id):
         task = ads_tasks[group_id]
 
         if not task.done():
-            return
+            task.cancel()
 
     async def worker():
 
         from database import get_advertising_group
+
+        last_send = 0
 
         while True:
 
@@ -50,51 +53,76 @@ async def start_group_sender(application, group_id):
                 if not bool(group[6]):
                     break
 
-                interval = int(group[5])
-
-                target = group[2]
+                interval = max(
+                    1,
+                    int(group[5]),
+                )
 
                 message_type = group[7]
                 message_text = group[8]
-
                 forward_chat_id = group[9]
                 forward_message_id = group[10]
 
-                try:
+                target = group[2]
 
-                    if message_type == "text":
+                now = time.time()
 
-                        if message_text:
+                if now - last_send >= interval * 60:
+
+                    try:
+
+                        if message_type == "text" and message_text:
 
                             await tg_client.send_message(
-                                entity=target,
-                                message=message_text,
+                                target,
+                                message_text,
+                                parse_mode="html",
                             )
 
-                    elif message_type == "forward":
+                        elif (
+                            message_type == "forward"
+                            and forward_chat_id
+                            and forward_message_id
+                        ):
 
-                        if forward_chat_id and forward_message_id:
-
-                            await tg_client.forward_messages(
+                            await tg_client.copy_messages(
                                 entity=target,
-                                messages=int(forward_message_id),
+                                messages=[int(forward_message_id)],
                                 from_peer=int(forward_chat_id),
                             )
 
-                except Exception as e:
+                        last_send = now
 
-                    print(f"[ADS SEND ERROR] {e}")
+                    except FloodWaitError as e:
 
-                await asyncio.sleep(interval * 60)
+                        print(
+                            "[ADS FLOOD]",
+                            e.seconds,
+                        )
+
+                        await asyncio.sleep(e.seconds + 1)
+
+                    except Exception as e:
+
+                        print(
+                            "[ADS SEND ERROR]",
+                            e,
+                        )
+
+                await asyncio.sleep(5)
 
             except asyncio.CancelledError:
+
                 break
 
             except Exception as e:
 
-                print(f"[ADS WORKER ERROR] {e}")
+                print(
+                    "[ADS WORKER ERROR]",
+                    e,
+                )
 
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
 
     ads_tasks[group_id] = asyncio.create_task(worker())
 
@@ -103,6 +131,8 @@ async def start_group_sender(application, group_id):
 
 WAIT_GROUP = 100
 WAIT_INTERVAL = 101
+WAIT_FORWARD = 102
+
 CURRENT_AD_GROUP = "CURRENT_AD_GROUP"
 
 # ---------------------- ads panel --------------------
@@ -694,7 +724,9 @@ async def receive_ads_message(
     if update.effective_user.id != ADMIN_ID:
         return
 
-    if context.user_data.get("ads_state") != "WAIT_MESSAGE":
+    state = context.user_data.get("ads_state")
+
+    if state not in ("WAIT_MESSAGE", "WAIT_FORWARD"):
         return
 
     group_id = context.user_data.get(CURRENT_AD_GROUP)
@@ -707,34 +739,99 @@ async def receive_ads_message(
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute(
-        """
-        UPDATE advertising_groups
-        SET 
-            message_type = ?,
-            forward_chat_id = ?,
-            forward_message_id = ?
-        WHERE id = ?
-        """,
-        (
-            "forward",
-            message.chat_id,
-            message.message_id,
-            group_id,
-        ),
-    )
+    if state == "WAIT_MESSAGE":
+
+        if message.text:
+
+            cur.execute(
+                """
+                UPDATE advertising_groups
+                SET
+                    message_type=?,
+                    message_text=?,
+                    forward_chat_id=NULL,
+                    forward_message_id=NULL
+                WHERE id=?
+                """,
+                (
+                    "text",
+                    message.text_html or message.text,
+                    group_id,
+                ),
+            )
+
+        else:
+
+            cur.execute(
+                """
+                UPDATE advertising_groups
+                SET
+                    message_type=?,
+                    message_text=NULL,
+                    forward_chat_id=?,
+                    forward_message_id=?
+                WHERE id=?
+                """,
+                (
+                    "forward",
+                    message.chat_id,
+                    message.message_id,
+                    group_id,
+                ),
+            )
+
+    else:
+
+        cur.execute(
+            """
+            UPDATE advertising_groups
+            SET
+                message_type=?,
+                message_text=NULL,
+                forward_chat_id=?,
+                forward_message_id=?
+            WHERE id=?
+            """,
+            (
+                "forward",
+                message.chat_id,
+                message.message_id,
+                group_id,
+            ),
+        )
 
     conn.commit()
     conn.close()
 
-    context.user_data.pop(
-        "ads_state",
-        None,
-    )
-
-    context.user_data.pop(
-        CURRENT_AD_GROUP,
-        None,
-    )
+    context.user_data.pop("ads_state", None)
+    context.user_data.pop(CURRENT_AD_GROUP, None)
 
     await message.reply_text("✅ پیام تبلیغاتی ذخیره شد.")
+
+
+# ---------------------- start all ads --------------------
+
+
+async def start_all_ads(application):
+
+    from database import get_all_advertising_groups
+
+    groups = get_all_advertising_groups()
+
+    for group in groups:
+
+        if bool(group[6]):
+
+            try:
+
+                await start_group_sender(
+                    application,
+                    group[0],
+                )
+
+            except Exception as e:
+
+                print(
+                    "[ADS START ERROR]",
+                    e,
+                )

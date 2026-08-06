@@ -23,6 +23,7 @@ from handlers.ads import (
     receive_ads_message,
     WAIT_GROUP,
     WAIT_INTERVAL,
+    start_all_ads,
 )
 
 from handlers.connect_account import (
@@ -837,6 +838,7 @@ def create_bot():
             from listener import start_all_listeners
 
             await start_all_listeners()
+            await start_all_ads(app)
         except Exception:
             pass
 
