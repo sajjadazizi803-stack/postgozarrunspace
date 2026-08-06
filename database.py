@@ -566,3 +566,24 @@ def save_advertising_group_message(group_id, chat_id, message_id):
 
 def get_connection():
     return sqlite3.connect(DB_PATH, check_same_thread=False)
+
+
+def update_ad_status(group_id, status):
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE advertising_groups
+        SET enabled = ?
+        WHERE id = ?
+        """,
+        (
+            status,
+            group_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()

@@ -18,12 +18,75 @@ from database import (
     get_connection,
 )
 
+import asyncio
+
+ads_tasks = {}
+
 # ---------------------- start group sender --------------------
 
 
 async def start_group_sender(application, group_id):
-    print(f"[ADS] Sender Started -> group={group_id}")
 
+    if group_id in ads_tasks:
+
+        task = ads_tasks[group_id]
+
+        if not task.done():
+            return
+
+    async def worker():
+
+        from database import (
+            get_advertising_group,
+        )
+
+        while True:
+
+            try:
+
+                group = get_advertising_group(group_id)
+
+                if not group:
+                    break
+
+                enabled = bool(group[6])
+
+                if not enabled:
+                    break
+
+                interval = int(group[5])
+
+                source_chat_id = group[11]
+                source_message_id = group[12]
+
+                target = group[2]
+
+                if source_chat_id and source_message_id:
+
+                    try:
+
+                        await tg_client.forward_messages(
+                            entity=target,
+                            messages=source_message_id,
+                            from_peer=source_chat_id,
+                        )
+
+                    except Exception:
+                        pass
+
+                await asyncio.sleep(interval * 60)
+
+            except asyncio.CancelledError:
+                break
+
+            except Exception:
+
+                await asyncio.sleep(10)
+
+    ads_tasks[group_id] = asyncio.create_task(worker())
+
+
+# ------------------------------------------
 
 WAIT_GROUP = 100
 WAIT_INTERVAL = 101
@@ -132,6 +195,86 @@ async def ads_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="HTML",
         )
+        return
+
+    elif query.data.startswith("ads_toggle_"):
+
+        from database import (
+            get_advertising_group,
+            set_advertising_group_enabled,
+        )
+
+        group_id = int(query.data.split("_")[2])
+
+        group = get_advertising_group(group_id)
+
+        if not group:
+            return
+
+        enabled = not bool(group[6])
+
+        set_advertising_group_enabled(
+            group_id,
+            enabled,
+        )
+
+        if enabled:
+            await start_group_sender(
+                context.application,
+                group_id,
+            )
+
+        group = get_advertising_group(group_id)
+
+        status = "🟢 فعال" if group[6] else "🔴 متوقف"
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "⏰ زمان‌بندی",
+                    callback_data=f"ads_time_{group_id}",
+                ),
+                InlineKeyboardButton(
+                    "📝 پیام",
+                    callback_data=f"ads_message_{group_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "⏹ توقف انتقال" if group[6] else "▶️ شروع انتقال",
+                    callback_data=f"ads_toggle_{group_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "📨 فورواردی",
+                    callback_data=f"ads_forward_{group_id}",
+                ),
+                InlineKeyboardButton(
+                    "🗑 حذف گروه",
+                    callback_data=f"ads_delete_{group_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔙 بازگشت",
+                    callback_data="ads_groups",
+                )
+            ],
+        ]
+
+        await query.edit_message_text(
+            f"""📢 <b>اطلاعات گروه تبلیغاتی</b>
+
+👥 گروه: {group[4] or "نامشخص"}
+🔗 یوزرنیم: {group[2]}
+🆔 شناسه: {group[3]}
+⏱ فاصله ارسال: {group[5]} دقیقه
+📊 وضعیت: {status}""",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
         return
 
     elif query.data.startswith("ads_group_"):
@@ -417,11 +560,9 @@ async def ads_message(
     context.user_data[CURRENT_AD_GROUP] = group_id
     context.user_data["ads_state"] = "WAIT_MESSAGE"
 
-    print(f"[ADS] Waiting message for group {group_id}")
-
-    await query.message.reply_text(
+    await query.edit_message_text(
         "📨 پیام تبلیغاتی را ارسال کنید.\n\n"
-        "می‌توانید متن، عکس، ویدیو، فایل، گیف یا هر نوع پیام دیگری ارسال کنید."
+        "می‌توانید متن، عکس، ویدیو، گیف، فایل یا هر نوع پیام تلگرامی را ارسال کنید."
     )
 
 
