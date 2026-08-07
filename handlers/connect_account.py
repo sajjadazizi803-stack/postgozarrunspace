@@ -129,7 +129,21 @@ async def receive_source_channel(
         account_type,
     )
 
+    if not update.message or not update.message.text:
+        return
+
     source_channel = update.message.text.strip()
+
+    if source_channel in (
+        "🤖 با اکانت ربات",
+        "👤 با اکانت خودم",
+        "📢 کانال",
+        "👥 گروه",
+        "🏠",
+        "🔙",
+    ):
+        return
+
     source_channel = source_channel.strip()
 
     # =====================================================
