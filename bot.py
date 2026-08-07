@@ -779,6 +779,12 @@ from handlers.connect_account import (
 
 async def conversation_router(update, context):
 
+    if update.message is None:
+        return
+
+    if update.message.text is None:
+        return
+
     user_data = context.user_data or {}
 
     state = user_data.get("state", State.NONE)
@@ -793,15 +799,16 @@ async def conversation_router(update, context):
 
         from database import save_api_id
 
+        api_id = update.message.text.strip()
+
         save_api_id(
             update.effective_user.id,
-            update.message.text.strip(),
+            api_id,
         )
 
         context.user_data["state"] = "WAIT_API_HASH"
 
-        await update.message.reply_text("""
-✅ API ID ذخیره شد.
+        await update.message.reply_text("""✅ API ID ذخیره شد.
 
 حالا API HASH رو همینجا برام ارسال کن.""")
 
@@ -811,15 +818,16 @@ async def conversation_router(update, context):
 
         from database import save_api_hash
 
+        api_hash = update.message.text.strip()
+
         save_api_hash(
             update.effective_user.id,
-            update.message.text.strip(),
+            api_hash,
         )
 
         context.user_data["state"] = "WAIT_PHONE"
 
-        await update.message.reply_text("""
-✅ API HASH هم ذخیره شد.
+        await update.message.reply_text("""✅ API HASH هم ذخیره شد.
 
 حالا شماره تلگرامت رو با فرمت زیر ارسال کن:
 
@@ -833,6 +841,8 @@ async def conversation_router(update, context):
             update.effective_user.id,
             update.message.text.strip(),
         )
+
+        context.user_data["state"] = "WAIT_CODE"
 
         await update.message.reply_text("⏳ در حال ارسال کد ورود...")
 
@@ -919,7 +929,7 @@ def create_bot():
 
     app.add_handler(
         MessageHandler(
-            filters.ALL & ~filters.COMMAND,
+            filters.TEXT & ~filters.COMMAND,
             conversation_router,
         ),
         group=2,
