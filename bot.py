@@ -79,6 +79,8 @@ from database import save_api_id
 from database import save_api_hash
 from database import save_phone
 from database import get_account
+from telethon.errors import SessionPasswordNeededError
+from telethon.errors import PasswordHashInvalidError
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -840,7 +842,7 @@ async def conversation_router(update, context):
 
 حالا شماره تلگرامت رو با فرمت زیر ارسال کن:
 +989123456789
-شماره اکانتی که api id  و  hash id رو فرستادی.""")
+شماره اکانتی که api id  و  hash id اون رو فرستادی.""")
 
         return
 
@@ -1091,6 +1093,76 @@ async def conversation_router(update, context):
             )
 
             return
+
+    if state == "WAIT_2FA_PASSWORD":
+
+        from database import save_session
+
+        password = update.message.text
+
+        client = context.user_data.get("login_client")
+
+        if not client:
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text(
+                "❌ نشست ورود پیدا نشد.\n\nلطفاً دوباره اتصال اکانت را شروع کنید."
+            )
+            return
+
+        try:
+
+            await client.sign_in(password=password)
+
+            if not await client.is_user_authorized():
+                await update.message.reply_text("❌ ورود انجام نشد.")
+                return
+
+            session_string = client.session.save()
+
+            print(f"[LOGIN] Session saved for user {update.effective_user.id}")
+
+            save_session(
+                update.effective_user.id,
+                session_string,
+            )
+
+            await client.disconnect()
+
+            context.user_data.pop("login_client", None)
+            context.user_data.pop("login_phone", None)
+            context.user_data.pop("phone_code_hash", None)
+
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text("✅ اکانت با موفقیت متصل شد.")
+
+        except SessionPasswordNeededError:
+
+            await update.message.reply_text(
+                "🔐 این اکانت دارای تایید دومرحله‌ای است.\n\n"
+                "رمز دومرحله‌ای را ارسال کنید."
+            )
+
+            context.user_data["state"] = State.WAIT_2FA_PASSWORD
+
+        except PasswordHashInvalidError:
+
+            await update.message.reply_text(
+                "❌ رمز دومرحله‌ای اشتباه است.\n\n" "دوباره رمز را ارسال کنید."
+            )
+
+            context.user_data["state"] = State.WAIT_2FA_PASSWORD
+
+        except Exception as e:
+
+            print("[2FA ERROR]", type(e).name, str(e))
+
+            await update.message.reply_text(f"❌ خطا:\n{type(e).name}")
+
+            context.user_data["state"] = State.WAIT_2FA_PASSWORD
+
+        return
 
     return
 
