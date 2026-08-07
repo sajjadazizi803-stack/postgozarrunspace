@@ -242,24 +242,26 @@ async def receive_source_channel(
         return
 
     # =====================================================
-    # ثبت عادی مبدا
+    # ثبت مبدا
     # =====================================================
 
-    try:
+    if not context.user_data.get("use_bot_session"):
 
         try:
 
-            await tg_client(JoinChannelRequest(source_channel))
+            try:
 
-        except UserAlreadyParticipantError:
+                await tg_client(JoinChannelRequest(source_channel))
 
-            pass
+            except UserAlreadyParticipantError:
 
-    except Exception:
+                pass
 
-        await update.message.reply_text("❌ عضویت در کانال مبدا انجام نشد.")
+        except Exception:
 
-        return
+            await update.message.reply_text("❌ عضویت در کانال مبدا انجام نشد.")
+
+            return
 
     context.user_data["source_channel"] = source_channel
 
