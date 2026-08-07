@@ -16,6 +16,14 @@ from telegram.ext import (
     ApplicationHandlerStop,
 )
 
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from telethon.errors import (
+    SessionPasswordNeededError,
+    PhoneCodeInvalidError,
+    PhoneCodeExpiredError,
+)
+
 from handlers.ads import (
     ads_buttons,
     ads_message,
@@ -831,23 +839,258 @@ async def conversation_router(update, context):
         await update.message.reply_text("""✅ API HASH هم ذخیره شد.
 
 حالا شماره تلگرامت رو با فرمت زیر ارسال کن:
-
-+989123456789""")
++989123456789
+شماره اکانتی که api id  و  hash id رو فرستادی.""")
 
         return
 
     if state == "WAIT_PHONE":
 
+        from database import save_phone, get_account
+
+        user_id = update.effective_user.id
+        phone = update.message.text.strip()
+
+        account = get_account(user_id)
+
+        if not account:
+            await update.message.reply_text("❌ اطلاعات اتصال اکانت پیدا نشد.")
+            context.user_data["state"] = State.NONE
+            return
+
+        api_id = account[1]
+        api_hash = account[2]
+
+        if not api_id or not api_hash:
+            await update.message.reply_text("❌ ابتدا API ID و API HASH را وارد کنید.")
+            context.user_data["state"] = State.NONE
+            return
+
+        try:
+            api_id = int(api_id)
+        except (TypeError, ValueError):
+
+            await update.message.reply_text("❌ API ID معتبر نیست.")
+
+            context.user_data["state"] = State.NONE
+            return
+
         save_phone(
-            update.effective_user.id,
-            update.message.text.strip(),
+            user_id,
+            phone,
         )
 
-        context.user_data["state"] = "WAIT_CODE"
+        status_message = await update.message.reply_text("⏳ در حال ارسال کد ورود...")
 
-        await update.message.reply_text("⏳ در حال ارسال کد ورود...")
+        client = TelegramClient(
+            StringSession(),
+            api_id,
+            api_hash,
+        )
+
+        try:
+
+            await client.connect()
+
+            sent_code = await client.send_code_request(phone)
+
+            # نگه داشتن Client و phone_code_hash
+            context.user_data["login_client"] = client
+            context.user_data["phone_code_hash"] = sent_code.phone_code_hash
+            context.user_data["login_phone"] = phone
+
+            context.user_data["state"] = "WAIT_CODE"
+
+            try:
+                await status_message.delete()
+            except Exception:
+                pass
+
+            await update.message.reply_text(
+                """📩 <b>کد ورود ارسال شد.</b>
+
+کدی که تلگرام برای اکانت شما ارسال کرده را همینجا بفرستید.
+
+⚠️ کد ورود را فقط همینجا ارسال کنید.""",
+                parse_mode="HTML",
+            )
+
+        except Exception as e:
+
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+            print(
+                "SEND LOGIN CODE ERROR:",
+                type(e).__name__,
+                str(e),
+            )
+
+            try:
+                await status_message.delete()
+            except Exception:
+                pass
+
+            await update.message.reply_text(
+                "❌ ارسال کد ورود انجام نشد.\n\n"
+                "شماره و API اطلاعات خود را بررسی کنید."
+            )
+
+            context.user_data.pop(
+                "login_client",
+                None,
+            )
+
+            context.user_data.pop(
+                "phone_code_hash",
+                None,
+            )
+
+            context.user_data["state"] = "WAIT_PHONE"
 
         return
+
+    if state == "WAIT_CODE":
+
+        from database import save_session
+
+        user_id = update.effective_user.id
+        code = update.message.text.strip()
+
+        client = context.user_data.get("login_client")
+
+        phone = context.user_data.get("login_phone")
+
+        phone_code_hash = context.user_data.get("phone_code_hash")
+
+        if not client or not phone or not phone_code_hash:
+
+            await update.message.reply_text(
+                "❌ نشست ورود پیدا نشد.\n\n" "لطفاً اتصال اکانت را از ابتدا انجام دهید."
+            )
+
+            context.user_data["state"] = State.NONE
+            return
+
+        try:
+
+            await client.sign_in(
+                phone=phone,
+                code=code,
+                phone_code_hash=phone_code_hash,
+            )
+
+            session_string = client.session.save()
+
+            save_session(
+                user_id,
+                session_string,
+            )
+
+            await client.disconnect()
+
+            context.user_data.pop(
+                "login_client",
+                None,
+            )
+
+            context.user_data.pop(
+                "phone_code_hash",
+                None,
+            )
+
+            context.user_data.pop(
+                "login_phone",
+                None,
+            )
+
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text(
+                """✅ <b>اکانت با موفقیت متصل شد.</b>
+
+🔐 نشست اکانت ذخیره شد و اتصال با موفقیت انجام شد.""",
+                parse_mode="HTML",
+            )
+
+        except PhoneCodeInvalidError:
+
+            await update.message.reply_text(
+                "❌ کد ورود اشتباه است.\n\n" "لطفاً کد صحیح را ارسال کنید."
+            )
+
+            return
+
+        except PhoneCodeExpiredError:
+
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+            context.user_data.pop(
+                "login_client",
+                None,
+            )
+
+            context.user_data.pop(
+                "phone_code_hash",
+                None,
+            )
+
+            context.user_data.pop(
+                "login_phone",
+                None,
+            )
+
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text(
+                "❌ کد ورود منقضی شده است.\n\n" "لطفاً اتصال اکانت را دوباره شروع کنید."
+            )
+
+            return
+
+        except SessionPasswordNeededError:
+
+            context.user_data["state"] = "WAIT_2FA_PASSWORD"
+
+            await update.message.reply_text(
+                """🔐 <b>تأیید دومرحله‌ای فعال است.</b>
+
+رمز دومرحله‌ای اکانت تلگرام را ارسال کنید.""",
+                parse_mode="HTML",
+            )
+
+            return
+
+        except Exception as e:
+
+            print(
+                "LOGIN ERROR:",
+                type(e).__name__,
+                str(e),
+            )
+
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+            context.user_data.pop(
+                "login_client",
+                None,
+            )
+
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text(
+                "❌ اتصال اکانت انجام نشد.\n\n" "لطفاً دوباره تلاش کنید."
+            )
+
+            return
 
     return
 

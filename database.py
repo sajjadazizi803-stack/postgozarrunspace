@@ -702,3 +702,24 @@ def get_account(user_id):
     conn.close()
 
     return row
+
+
+def save_session(user_id, session):
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE accounts
+        SET session=?
+        WHERE user_id=?
+        """,
+        (
+            session,
+            user_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
