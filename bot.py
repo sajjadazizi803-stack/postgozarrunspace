@@ -13,6 +13,7 @@ from telegram.ext import (
     MessageHandler,
     ContextTypes,
     filters,
+    ApplicationHandlerStop,
 )
 
 from handlers.ads import (
@@ -754,7 +755,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.user_data["state"] = "WAIT_API_ID"
 
-        return
+        raise ApplicationHandlerStop
 
     if text == "💬 ارتباط با پشتیبانی":
 
