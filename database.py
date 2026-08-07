@@ -559,10 +559,6 @@ def save_advertising_group_message(group_id, chat_id, message_id):
     conn.commit()
     conn.close()
 
-    print(
-        f"[ADS] Message saved -> group={group_id}, chat={chat_id}, message={message_id}"
-    )
-
 
 def get_connection():
     return sqlite3.connect(DB_PATH, check_same_thread=False)

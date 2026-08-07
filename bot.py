@@ -723,13 +723,9 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "📲 اتصال اکانت":
 
-        print("CONNECT ACCOUNT CLICKED")
-
         try:
 
             image_path = Path(__file__).resolve().parent / "images" / "api_tutorial.jpg"
-
-            print(image_path)
 
             with open(image_path, "rb") as photo:
 
@@ -752,7 +748,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         except Exception as e:
 
-            print("CONNECT ACCOUNT ERROR:", e)
+            pass
 
             await update.message.reply_text(str(e))
 
@@ -811,17 +807,6 @@ async def conversation_router(update, context):
 
         return
 
-    if state == "WAIT_PHONE":
-
-        save_phone(
-            update.effective_user.id,
-            update.message.text.strip(),
-        )
-
-        await update.message.reply_text("⏳ در حال ارسال کد ورود...")
-
-        return
-
     if state == "WAIT_API_HASH":
 
         from database import save_api_hash
@@ -837,7 +822,19 @@ async def conversation_router(update, context):
 ✅ API HASH هم ذخیره شد.
 
 حالا شماره تلگرامت رو با فرمت زیر ارسال کن:
+
 +989123456789""")
+
+        return
+
+    if state == "WAIT_PHONE":
+
+        save_phone(
+            update.effective_user.id,
+            update.message.text.strip(),
+        )
+
+        await update.message.reply_text("⏳ در حال ارسال کد ورود...")
 
         return
 
@@ -918,6 +915,14 @@ def create_bot():
             text_buttons,
         ),
         group=1,
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.ALL & ~filters.COMMAND,
+            conversation_router,
+        ),
+        group=2,
     )
 
     app.add_handler(

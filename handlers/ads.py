@@ -95,19 +95,13 @@ async def start_group_sender(application, group_id):
 
                     except FloodWaitError as e:
 
-                        print(
-                            "[ADS FLOOD]",
-                            e.seconds,
-                        )
+                        pass
 
                         await asyncio.sleep(e.seconds + 1)
 
                     except Exception as e:
 
-                        print(
-                            "[ADS SEND ERROR]",
-                            e,
-                        )
+                        pass
 
                 await asyncio.sleep(5)
 
@@ -117,10 +111,7 @@ async def start_group_sender(application, group_id):
 
             except Exception as e:
 
-                print(
-                    "[ADS WORKER ERROR]",
-                    e,
-                )
+                pass
 
                 await asyncio.sleep(5)
 
@@ -448,11 +439,7 @@ async def receive_group(
 
     except Exception as e:
 
-        print(
-            "ADD ADVERTISING GROUP ERROR:",
-            type(e).__name__,
-            str(e),
-        )
+        pass
 
         await update.message.reply_text("❌ ذخیره گروه انجام نشد.")
 
@@ -831,7 +818,4 @@ async def start_all_ads(application):
 
             except Exception as e:
 
-                print(
-                    "[ADS START ERROR]",
-                    e,
-                )
+                pass
