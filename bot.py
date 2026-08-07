@@ -711,6 +711,9 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "🤖 با اکانت ربات":
 
         context.user_data["transfer_account_type"] = "bot"
+        context.user_data["account_type"] = "bot"
+        context.user_data["client_type"] = "bot"
+        context.user_data["use_bot_session"] = True
 
         context.user_data["state"] = State.SOURCE_CHANNEL
 
