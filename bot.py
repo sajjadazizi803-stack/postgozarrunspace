@@ -664,6 +664,8 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "➕ افزودن انتقال":
 
+        context.user_data["transfer_menu"] = "TYPE"
+
         keyboard = ReplyKeyboardMarkup(
             [
                 ["📢 کانال", "👥 گروه"],
@@ -680,6 +682,8 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if text == "📢 کانال":
+
+        context.user_data["transfer_menu"] = "ACCOUNT"
 
         keyboard = ReplyKeyboardMarkup(
             [
@@ -744,6 +748,27 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "🔙":
 
+        menu = context.user_data.get("transfer_menu")
+
+        if menu == "ACCOUNT":
+
+            context.user_data["transfer_menu"] = "TYPE"
+
+            keyboard = ReplyKeyboardMarkup(
+                [
+                    ["📢 کانال", "👥 گروه"],
+                    ["🔙"],
+                ],
+                resize_keyboard=True,
+            )
+
+            await update.message.reply_text(
+                "نوع انتقال را انتخاب کنید:",
+                reply_markup=keyboard,
+            )
+
+            return
+
         keyboard = ReplyKeyboardMarkup(
             [
                 [
@@ -760,6 +785,8 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             resize_keyboard=True,
         )
+
+        context.user_data.pop("transfer_menu", None)
 
         await update.message.reply_text(
             "✅ <b>به منوی اصلی بازگشتید.</b>",
