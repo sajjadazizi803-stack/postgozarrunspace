@@ -723,7 +723,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
 
-            image_path = Path(__file__).resolve().parent / "images" / "api_tutorial.png"
+            image_path = Path(__file__).resolve().parent / "images" / "api_tutorial.jpg"
 
             print(image_path)
 
