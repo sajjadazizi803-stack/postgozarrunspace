@@ -35,6 +35,21 @@ CREATE TABLE IF NOT EXISTS transfers(
 
 db.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS accounts(
+
+    user_id INTEGER PRIMARY KEY,
+
+    api_id TEXT,
+    api_hash TEXT,
+
+    phone TEXT,
+
+    session TEXT
+)
+""")
+
+db.commit()
 
 # ================= add Transfers =================
 
@@ -601,29 +616,6 @@ def set_advertising_group_enabled(group_id, enabled):
             group_id,
         ),
     )
-
-    conn.commit()
-    conn.close()
-
-
-def create_accounts_table():
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS accounts(
-
-        user_id INTEGER PRIMARY KEY,
-
-        api_id TEXT,
-        api_hash TEXT,
-
-        phone TEXT,
-
-        session TEXT
-    )
-    """)
 
     conn.commit()
     conn.close()
