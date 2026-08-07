@@ -608,3 +608,109 @@ def set_advertising_group_enabled(group_id, enabled):
 
     conn.commit()
     conn.close()
+
+
+def create_accounts_table():
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS accounts(
+
+        user_id INTEGER PRIMARY KEY,
+
+        api_id TEXT,
+        api_hash TEXT,
+
+        phone TEXT,
+
+        session TEXT
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def save_api_id(user_id, api_id):
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+    INSERT OR IGNORE INTO accounts(user_id)
+    VALUES(?)
+    """,
+        (user_id,),
+    )
+
+    cur.execute(
+        """
+    UPDATE accounts
+    SET api_id=?
+    WHERE user_id=?
+    """,
+        (api_id, user_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def save_api_hash(user_id, api_hash):
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+    UPDATE accounts
+    SET api_hash=?
+    WHERE user_id=?
+    """,
+        (api_hash, user_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def save_phone(user_id, phone):
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+    UPDATE accounts
+    SET phone=?
+    WHERE user_id=?
+    """,
+        (phone, user_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_account(user_id):
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+    SELECT *
+    FROM accounts
+    WHERE user_id=?
+    """,
+        (user_id,),
+    )
+
+    row = cur.fetchone()
+
+    conn.close()
+
+    return row

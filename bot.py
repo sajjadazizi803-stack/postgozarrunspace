@@ -66,6 +66,10 @@ from handlers.ads import ads_panel
 from conversation import State
 from handlers.ads import receive_group
 from pathlib import Path
+from database import save_api_id
+from database import save_api_hash
+from database import save_phone
+from database import get_account
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -741,6 +745,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 2️⃣ کدی که تلگرام برای اکانتتون ارسال می‌کنه رو وارد کنید.
 3️⃣ روی API Development Tools بزنید و سپس Create Application رو انتخاب کنید.
 4️⃣ بعد از ساخت برنامه، API ID و API HASH بهتون نمایش داده میشه و هر دو رو کپی کنید
+طبق تصویر هر جا نیاز به وارد کردن نام و توضیحاتی بودید حتما باید انگلیسی باشه.
 
 📩 حالا فقط API ID رو همینجا برام ارسال کنید تا بریم مرحله بعد. 🚀""",
                 )
@@ -787,6 +792,54 @@ async def conversation_router(update, context):
 
     if state == State.TARGET_CHANNEL:
         return await receive_target_channel(update, context)
+
+    if state == "WAIT_API_ID":
+
+        from database import save_api_id
+
+        save_api_id(
+            update.effective_user.id,
+            update.message.text.strip(),
+        )
+
+        context.user_data["state"] = "WAIT_API_HASH"
+
+        await update.message.reply_text("""
+✅ API ID ذخیره شد.
+
+حالا API HASH رو همینجا برام ارسال کن.""")
+
+        return
+
+    if state == "WAIT_PHONE":
+
+        save_phone(
+            update.effective_user.id,
+            update.message.text.strip(),
+        )
+
+        await update.message.reply_text("⏳ در حال ارسال کد ورود...")
+
+        return
+
+    if state == "WAIT_API_HASH":
+
+        from database import save_api_hash
+
+        save_api_hash(
+            update.effective_user.id,
+            update.message.text.strip(),
+        )
+
+        context.user_data["state"] = "WAIT_PHONE"
+
+        await update.message.reply_text("""
+✅ API HASH هم ذخیره شد.
+
+حالا شماره تلگرامت رو با فرمت زیر ارسال کن:
++989123456789""")
+
+        return
 
     return
 
