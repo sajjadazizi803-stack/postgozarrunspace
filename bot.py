@@ -567,6 +567,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if user_data.get("ads_state") not in ("WAIT_GROUP", "WAIT_INTERVAL"):
             clear_waiting_state(context)
             user_data["state"] = State.NONE
+            state = State.NONE
 
     # =========================
     # دریافت کانال مبدا
@@ -715,9 +716,10 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["client_type"] = "bot"
         context.user_data["use_bot_session"] = True
 
-        context.user_data["state"] = State.SOURCE_CHANNEL
-
-        await update.message.reply_text("📢 آیدی یا لینک کانال مبدا را ارسال کنید.")
+        await connect_account(
+            update,
+            context,
+        )
 
         return
 
