@@ -708,10 +708,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.user_data["transfer_account_type"] = "bot"
 
-        await update.message.reply_text(
-            "⭐ انتقال با اکانت ربات انتخاب شد.\n\n"
-            "🔒 این قابلیت فقط برای کاربران VIP فعال است."
-        )
+        await update.message.reply_text("🔒 این قابلیت فقط برای کاربران VIP فعال است.")
 
         return
 
@@ -736,23 +733,6 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "✅ به منوی اصلی بازگشتید.",
-            reply_markup=keyboard,
-        )
-
-        return
-
-    if text == "🔙":
-
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["📢 کانال", "👥 گروه"],
-                ["🔙"],
-            ],
-            resize_keyboard=True,
-        )
-
-        await update.message.reply_text(
-            "نوع انتقال را انتخاب کنید:",
             reply_markup=keyboard,
         )
 
