@@ -116,6 +116,19 @@ async def receive_source_channel(
     if context.user_data.get("state") != State.SOURCE_CHANNEL:
         return
 
+    account_type = context.user_data.get(
+        "transfer_account_type",
+        "user",
+    )
+
+    context.user_data["account_type"] = account_type
+    context.user_data["client_type"] = account_type
+
+    print(
+        "[TRANSFER ACCOUNT]",
+        account_type,
+    )
+
     source_channel = update.message.text.strip()
     source_channel = source_channel.strip()
 
@@ -274,6 +287,22 @@ async def receive_target_channel(
 
     if context.user_data.get("state") != State.TARGET_CHANNEL:
         return
+
+    account_type = context.user_data.get(
+        "client_type",
+        context.user_data.get(
+            "account_type",
+            "user",
+        ),
+    )
+
+    context.user_data["account_type"] = account_type
+    context.user_data["use_bot_session"] = account_type == "bot"
+
+    print(
+        "[TRANSFER ACCOUNT]",
+        account_type,
+    )
 
     target_channel = update.message.text.strip()
 

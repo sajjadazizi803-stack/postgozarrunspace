@@ -687,7 +687,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = ReplyKeyboardMarkup(
             [
-                ["👤 با اکانت خودم", "🤖 با اکانت ربات (VIP)"],
+                ["👤 با اکانت خودم", "🤖 با اکانت ربات"],
                 ["🏠", "🔙"],
             ],
             resize_keyboard=True,
@@ -708,11 +708,13 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    if text == "🤖 با اکانت ربات (VIP)":
+    if text == "🤖 با اکانت ربات":
 
         context.user_data["transfer_account_type"] = "bot"
 
-        await update.message.reply_text("🔒 این قابلیت فقط برای کاربران VIP فعال است.")
+        context.user_data["state"] = State.SOURCE_CHANNEL
+
+        await update.message.reply_text("📢 آیدی یا لینک کانال مبدا را ارسال کنید.")
 
         return
 
