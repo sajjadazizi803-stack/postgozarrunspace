@@ -681,7 +681,80 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "📢 کانال":
 
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["👤 با اکانت خودم", "🤖 با اکانت ربات (VIP)"],
+                ["🏠", "🔙"],
+            ],
+            resize_keyboard=True,
+        )
+
+        await update.message.reply_text(
+            "روش انتقال را انتخاب کنید:",
+            reply_markup=keyboard,
+        )
+
+        return
+
+    if text == "👤 با اکانت خودم":
+
+        context.user_data["transfer_account_type"] = "user"
+
         await connect_account(update, context)
+
+        return
+
+    if text == "🤖 با اکانت ربات (VIP)":
+
+        context.user_data["transfer_account_type"] = "bot"
+
+        await update.message.reply_text(
+            "⭐ انتقال با اکانت ربات انتخاب شد.\n\n"
+            "🔒 این قابلیت فقط برای کاربران VIP فعال است."
+        )
+
+        return
+
+    if text == "🏠":
+
+        keyboard = ReplyKeyboardMarkup(
+            [
+                [
+                    "➕ افزودن انتقال",
+                    "📋 انتقال‌های ثبت شده",
+                ],
+                [
+                    "📚 آموزش استفاده",
+                    "📲 اتصال اکانت",
+                ],
+                [
+                    "💬 ارتباط با پشتیبانی",
+                ],
+            ],
+            resize_keyboard=True,
+        )
+
+        await update.message.reply_text(
+            "✅ به منوی اصلی بازگشتید.",
+            reply_markup=keyboard,
+        )
+
+        return
+
+    if text == "🔙":
+
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["📢 کانال", "👥 گروه"],
+                ["🔙"],
+            ],
+            resize_keyboard=True,
+        )
+
+        await update.message.reply_text(
+            "نوع انتقال را انتخاب کنید:",
+            reply_markup=keyboard,
+        )
 
         return
 
@@ -1156,7 +1229,7 @@ async def conversation_router(update, context):
 
         except Exception as e:
 
-            print("[2FA ERROR]", type(e).name, str(e))
+            print("[2FA ERROR]", type(e).__name__, str(e))
 
             await update.message.reply_text(f"❌ خطا:\n{type(e).name}")
 
