@@ -719,13 +719,19 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "📲 اتصال اکانت":
 
-        image_path = Path(__file__).resolve().parent / "images" / "api_tutorial.png"
+        print("CONNECT ACCOUNT CLICKED")
 
-        await update.message.reply_photo(
-            photo=open(image_path, "rb"),
-            caption="""🔐 اتصال اکانت
+        try:
 
-📍 مرحله 1 از 4
+            image_path = Path(__file__).resolve().parent / "images" / "api_tutorial.png"
+
+            print(image_path)
+
+            with open(image_path, "rb") as photo:
+
+                await update.message.reply_photo(
+                    photo=photo,
+                    caption="""🔐 اتصال اکانت
 
 ⚠️ حتما ابتدا بخش نکات مهم رو از قسمت آموزش استفاده مطالعه کنید.
 
@@ -737,7 +743,13 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 4️⃣ بعد از ساخت برنامه، API ID و API HASH بهتون نمایش داده میشه و هر دو رو کپی کنید
 
 📩 حالا فقط API ID رو همینجا برام ارسال کنید تا بریم مرحله بعد. 🚀""",
-        )
+                )
+
+        except Exception as e:
+
+            print("CONNECT ACCOUNT ERROR:", e)
+
+            await update.message.reply_text(str(e))
 
         context.user_data["state"] = "WAIT_API_ID"
 
