@@ -577,7 +577,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await receive_source_channel(update, context)
 
-        return
+        raise ApplicationHandlerStop
 
     # =========================
     # حذف خطوط آخر
@@ -657,7 +657,7 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await receive_target_channel(update, context)
 
-        return
+        raise ApplicationHandlerStop
 
     # =========================
     # انتخاب نوع افزودن
