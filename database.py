@@ -29,10 +29,11 @@ CREATE TABLE IF NOT EXISTS transfers(
     sent_count INTEGER DEFAULT 0,
     last_send TEXT,
     remove_last_lines INTEGER DEFAULT 0,
-    append_last_lines TEXT DEFAULT ''
+    append_last_lines TEXT DEFAULT '',
     account_type TEXT DEFAULT 'bot'
 )
 """)
+
 # ----------------------------- db.comit --------------------------------
 
 db.commit()
