@@ -31,12 +31,62 @@ from database import (
     get_transfer_by_id,
 )
 
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from database import get_account
+
 from telethon.tl.types import (
     ChannelParticipantAdmin,
     ChannelParticipantCreator,
 )
 
 change_target_states = {}
+
+# ---------------------- get user telegram client ----------------------
+
+
+async def get_user_telegram_client(user_id):
+
+    account = get_account(user_id)
+
+    if not account:
+        return None
+
+    api_id = account[1]
+    api_hash = account[2]
+    session_string = account[4]
+
+    if not api_id or not api_hash or not session_string:
+        return None
+
+    try:
+
+        client = TelegramClient(
+            StringSession(session_string),
+            int(api_id),
+            api_hash,
+        )
+
+        await client.connect()
+
+        if not await client.is_user_authorized():
+
+            await client.disconnect()
+
+            return None
+
+        return client
+
+    except Exception as e:
+
+        print(
+            "[USER SESSION ERROR]",
+            e,
+        )
+
+        return None
+
+
 # =========================
 # connect account
 # =========================
@@ -351,7 +401,49 @@ async def receive_source_channel(
     # ثبت مبدا
     # =====================================================
 
-    if not context.user_data.get("use_bot_session"):
+    account_type = context.user_data.get(
+        "transfer_account_type",
+        "bot",
+    )
+
+    if account_type == "user":
+
+        user_client = await get_user_telegram_client(update.effective_user.id)
+
+        if not user_client:
+
+            await update.message.reply_text(
+                "❌ اتصال اکانتت پیدا نشد یا نشست اکانت معتبر نیست.\n\n"
+                "اول از بخش «📲 اتصال اکانت» دوباره اکانتت رو وصل کن."
+            )
+
+            context.user_data["state"] = State.NONE
+
+            return
+
+        try:
+
+            try:
+
+                await user_client(JoinChannelRequest(source_channel))
+
+            except UserAlreadyParticipantError:
+
+                pass
+
+        except Exception as e:
+
+            await update.message.reply_text(
+                "❌ اکانت شما نتونست وارد کانال مبدا بشه.\n\n" f"خطا: {e}"
+            )
+
+            await user_client.disconnect()
+
+            return
+
+        await user_client.disconnect()
+
+    else:
 
         try:
 
@@ -363,14 +455,15 @@ async def receive_source_channel(
 
                 pass
 
-        except Exception:
+        except Exception as e:
 
-            await update.message.reply_text("❌ عضویت در کانال مبدا انجام نشد.")
+            await update.message.reply_text(
+                "❌ عضویت ربات در کانال مبدا انجام نشد.\n\n" f"خطا: {e}"
+            )
 
             return
 
     context.user_data["source_channel"] = source_channel
-
     context.user_data["state"] = State.TARGET_CHANNEL
 
     await update.message.reply_text(
@@ -550,6 +643,7 @@ async def receive_target_channel(
 
         await update.message.reply_text(
             f"""✅ <b>کانال مقصد ثبت شد.</b>
+            
 📥 <b>مبدا:</b> {source_channel}
 📤 <b>مقصد جدید:</b> {target_channel}
 
@@ -583,25 +677,75 @@ async def receive_target_channel(
     # JOIN TARGET
     # =================================================
 
-    try:
+    account_type = context.user_data.get(
+        "transfer_account_type",
+        "bot",
+    )
 
-        try:
-            await tg_client(
-                JoinChannelRequest(
-                    target_channel,
-                )
+    if account_type == "user":
+
+        user_client = await get_user_telegram_client(update.effective_user.id)
+
+        if not user_client:
+
+            await update.message.reply_text(
+                "❌ اتصال اکانتت پیدا نشد یا نشست اکانت معتبر نیست.\n\n"
+                "اول از بخش «📲 اتصال اکانت» دوباره اکانتت رو وصل کن."
             )
 
-        except UserAlreadyParticipantError:
-            pass
+            context.user_data["state"] = State.NONE
 
-    except Exception as e:
+            return
 
-        await update.message.reply_text(
-            "❌ عضویت اکانت در کانال مقصد انجام نشد.\n\n" f"خطا: {e}"
-        )
+        try:
 
-        return
+            try:
+
+                await user_client(
+                    JoinChannelRequest(
+                        target_channel,
+                    )
+                )
+
+            except UserAlreadyParticipantError:
+
+                pass
+
+        except Exception as e:
+
+            await update.message.reply_text(
+                "❌ اکانت شما نتونست وارد کانال مقصد بشه.\n\n" f"خطا: {e}"
+            )
+
+            await user_client.disconnect()
+
+            return
+
+        await user_client.disconnect()
+
+    else:
+
+        try:
+
+            try:
+
+                await tg_client(
+                    JoinChannelRequest(
+                        target_channel,
+                    )
+                )
+
+            except UserAlreadyParticipantError:
+
+                pass
+
+        except Exception as e:
+
+            await update.message.reply_text(
+                "❌ عضویت ربات در کانال مقصد انجام نشد.\n\n" f"خطا: {e}"
+            )
+
+            return
 
     # =================================================
     # SAVE PENDING TRANSFER
@@ -624,15 +768,13 @@ async def receive_target_channel(
 
     await update.message.reply_text(
         f"""✅ <b>کانال مقصد ثبت شد.</b>
+
 📥 <b>مبدا:</b> {source_channel}
 📤 <b>مقصد:</b> {target_channel}
 
-<b>حالا:
-1- ربات رو ادمین کانال مقصد کن.
-2- اکانت @egpora_e3 رو هم ادمین کانال مقصد کن.
-اگر هر دو ادمین نباشن، انتقال انجام نمیشه
+🤖 حالا فقط ربات رو در کانال مقصد ادمین کن.
 
-بعد روی دکمه زیر بزن.</b>""",
+بعد از اینکه ربات رو ادمین کردی، روی دکمه «✅ انجام شد» بزن.""",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
@@ -1234,74 +1376,200 @@ async def append_lines_setting(update: Update, context: ContextTypes.DEFAULT_TYP
 # -------------------- finish transfer --------------------
 
 
-async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def finish_transfer(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
 
     query = update.callback_query
     await query.answer()
 
+    user_id = query.from_user.id
+
     source_channel = context.user_data.get("pending_source")
+
     target_channel = context.user_data.get("pending_target")
+
+    account_type = context.user_data.get(
+        "transfer_account_type",
+        context.user_data.get(
+            "account_type",
+            "bot",
+        ),
+    )
 
     if not source_channel or not target_channel:
 
         await query.edit_message_text("❌ اطلاعات انتقال پیدا نشد.")
+
         return
 
-    # ----------------------------------
-    # بررسی عضویت اکانت در مبدا
-    # ----------------------------------
+    # =====================================================
+    # انتقال با اکانت شخصی
+    # =====================================================
 
-    try:
+    if account_type == "user":
 
-        await tg_client(
-            GetParticipantRequest(
-                source_channel,
-                "me",
+        user_client = await get_user_telegram_client(user_id)
+
+        if not user_client:
+
+            await query.message.reply_text(
+                """❌ اتصال اکانتت پیدا نشد یا نشست اکانت معتبر نیست.
+
+اول از بخش «📲 اتصال اکانت» دوباره اکانتت رو وصل کن."""
             )
-        )
 
-    except UserNotParticipantError:
+            return
 
-        await query.edit_message_text("❌ اکانت داخل کانال مبدا عضو نیست.")
-        return
+        # -------------------------------------------------
+        # بررسی عضویت اکانت کاربر در مبدأ
+        # -------------------------------------------------
 
-    except Exception:
-        pass
+        try:
 
-    # بررسی عضویت اکانت در مقصد
-
-    try:
-
-        await tg_client(
-            GetParticipantRequest(
-                target_channel,
-                "me",
+            await user_client(
+                GetParticipantRequest(
+                    source_channel,
+                    "me",
+                )
             )
-        )
 
-    except UserNotParticipantError:
+        except UserNotParticipantError:
 
-        await query.answer(
-            "❌ اکانت داخل کانال مقصد عضو نیست.",
-            show_alert=True,
-        )
+            await user_client.disconnect()
 
-        return
+            await query.message.reply_text(
+                """❌ اکانت شما هنوز داخل کانال مبدا عضو نیست.
 
-    except Exception:
+ابتدا مطمئن شوید اکانت شما عضو کانال مبدا شده باشد."""
+            )
 
-        pass
+            return
 
-        await query.answer(
-            "❌ بررسی اکانت در مقصد انجام نشد.",
-            show_alert=True,
-        )
+        except Exception as e:
 
-        return
+            print(
+                "[USER SOURCE CHECK ERROR]",
+                e,
+            )
 
-    # ----------------------------------
-    # بررسی وجود و ادمین بودن ربات
-    # ----------------------------------
+            await user_client.disconnect()
+
+            await query.message.reply_text(
+                """❌ امکان بررسی عضویت اکانت در کانال مبدا وجود ندارد.
+
+لطفاً دوباره تلاش کنید."""
+            )
+
+            return
+
+        # -------------------------------------------------
+        # بررسی عضویت اکانت کاربر در مقصد
+        # -------------------------------------------------
+
+        try:
+
+            await user_client(
+                GetParticipantRequest(
+                    target_channel,
+                    "me",
+                )
+            )
+
+        except UserNotParticipantError:
+
+            await user_client.disconnect()
+
+            await query.message.reply_text(
+                """❌ اکانت شما هنوز داخل کانال مقصد عضو نیست.
+
+لطفاً مطمئن شوید اکانت شما عضو کانال مقصد شده باشد."""
+            )
+
+            return
+
+        except Exception as e:
+
+            print(
+                "[USER TARGET CHECK ERROR]",
+                e,
+            )
+
+            await user_client.disconnect()
+
+            await query.message.reply_text(
+                """❌ امکان بررسی عضویت اکانت در کانال مقصد وجود ندارد.
+
+لطفاً دوباره تلاش کنید."""
+            )
+
+            return
+
+        # Session دیگر لازم نیست
+        await user_client.disconnect()
+
+    # =====================================================
+    # انتقال با اکانت ربات
+    # =====================================================
+
+    else:
+
+        # -------------------------------------------------
+        # بررسی عضویت ربات در مبدأ
+        # -------------------------------------------------
+
+        try:
+
+            await tg_client(
+                GetParticipantRequest(
+                    source_channel,
+                    "me",
+                )
+            )
+
+        except UserNotParticipantError:
+
+            await query.message.reply_text("❌ ربات داخل کانال مبدا عضو نیست.")
+
+            return
+
+        except Exception as e:
+
+            print(
+                "[BOT SOURCE CHECK ERROR]",
+                e,
+            )
+
+        # -------------------------------------------------
+        # بررسی عضویت ربات در مقصد
+        # -------------------------------------------------
+
+        try:
+
+            await tg_client(
+                GetParticipantRequest(
+                    target_channel,
+                    "me",
+                )
+            )
+
+        except UserNotParticipantError:
+
+            await query.message.reply_text("❌ ربات داخل کانال مقصد عضو نیست.")
+
+            return
+
+        except Exception as e:
+
+            print(
+                "[BOT TARGET CHECK ERROR]",
+                e,
+            )
+
+    # =====================================================
+    # بررسی ادمین بودن ربات در مقصد
+    # =====================================================
 
     try:
 
@@ -1312,12 +1580,16 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id=me.id,
         )
 
-    except Exception:
+    except Exception as e:
 
-        await query.message.reply_text(
-            "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
-            "لطفاً ربات را در کانال مقصد ادمین کنید و دوباره روی «انجام شد» بزنید."
+        print(
+            "[BOT ADMIN CHECK ERROR]",
+            e,
         )
+
+        await query.message.reply_text("""❌ ربات هنوز ادمین کانال مقصد نیست.
+
+لطفاً ربات را در کانال مقصد ادمین کن و دوباره روی «✅ انجام شد» بزن.""")
 
         return
 
@@ -1326,83 +1598,92 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "creator",
     ):
 
-        await query.message.reply_text(
-            "❌ ربات هنوز ادمین کانال مقصد نیست.\n\n"
-            "لطفاً ربات را در کانال مقصد ادمین کنید و دوباره روی «انجام شد» بزنید."
-        )
+        await query.message.reply_text("""❌ ربات هنوز ادمین کانال مقصد نیست.
+
+لطفاً ربات را در کانال مقصد ادمین کن و دوباره روی «✅ انجام شد» بزن.""")
 
         return
 
-    # ----------------------------------
-    # بررسی ادمین بودن اکانت شخصی
-    # ----------------------------------
+    # =====================================================
+    # ثبت انتقال
+    # =====================================================
 
     try:
 
-        participant = await tg_client(
-            GetParticipantRequest(
-                target_channel,
-                "me",
-            )
+        add_transfer(
+            user_id,
+            source_channel,
+            target_channel,
+            account_type,
         )
 
-        participant = participant.participant
+    except Exception as e:
 
-        if type(participant).__name__ not in (
-            "ChannelParticipantAdmin",
-            "ChannelParticipantCreator",
-        ):
+        print(
+            "[ADD TRANSFER ERROR]",
+            e,
+        )
 
-            await query.message.reply_text(
-                "❌ اکانت هنوز ادمین کانال مقصد نیست.\n\n"
-                "لطفاً اکانت را در کانال مقصد ادمین کنید و دوباره روی «انجام شد» بزنید."
-            )
+        await query.message.reply_text("❌ ثبت انتقال انجام نشد.")
 
-            return
+        return
 
-    except Exception:
+    # =====================================================
+    # فعال کردن Listener
+    # =====================================================
+
+    try:
+
+        await add_new_transfer(
+            user_id,
+            source_channel,
+            target_channel,
+        )
+
+    except Exception as e:
+
+        print(
+            "[LISTENER START ERROR]",
+            e,
+        )
 
         await query.message.reply_text(
-            "❌ امکان بررسی ادمین بودن اکانت وجود ندارد.\n\n"
-            "مطمئن شوید اکانت در مقصد عضو و ادمین است."
+            """⚠️ انتقال ثبت شد، اما فعال‌سازی انتقال خودکار با مشکل مواجه شد.
+
+لطفاً وضعیت انتقال را از بخش «📋 انتقال‌های ثبت شده» بررسی کن."""
         )
 
         return
 
-    # ----------------------------------
-    # ثبت انتقال
-    # ----------------------------------
+    # =====================================================
+    # پاک کردن اطلاعات موقت
+    # =====================================================
 
-    account_type = context.user_data.get(
-        "account_type",
-        context.user_data.get(
-            "transfer_account_type",
-            "bot",
-        ),
+    context.user_data.pop(
+        "pending_source",
+        None,
     )
 
-    add_transfer(
-        query.from_user.id,
-        source_channel,
-        target_channel,
-        account_type,
+    context.user_data.pop(
+        "pending_target",
+        None,
     )
 
-    await add_new_transfer(
-        query.from_user.id,
-        source_channel,
-        target_channel,
+    context.user_data["state"] = State.NONE
+
+    # =====================================================
+    # پیام موفقیت
+    # =====================================================
+
+    await query.edit_message_text(
+        f"""✅ <b>انتقال با موفقیت ثبت شد.</b>
+
+📥 <b>مبدا:</b> {source_channel}
+📤 <b>مقصد:</b> {target_channel}
+
+🚀 انتقال خودکار فعال شد.""",
+        parse_mode="HTML",
     )
-
-    context.user_data.pop("pending_source", None)
-    context.user_data.pop("pending_target", None)
-
-    await query.edit_message_text(f"""✅ انتقال ثبت شد.
-
-📥 مبدا: {source_channel}
-📤 مقصد: {target_channel}
-
-🚀 انتقال خودکار فعال شد.""")
 
 
 # -------------------- finish change target --------------------
