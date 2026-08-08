@@ -766,15 +766,27 @@ async def receive_target_channel(
 
     context.user_data["state"] = State.NONE
 
+    if account_type == "bot":
+
+        admin_text = """🤖 حالا اکانت متصل به ربات را در کانال مقصد ادمین کنید:
+
+@egpora_e3
+
+بعد از ادمین کردن اکانت، روی «✅ انجام شد» بزنید."""
+
+    else:
+
+        admin_text = """👤 حالا همان اکانتی که به ربات وصل کرده‌اید را در کانال مقصد ادمین کنید.
+
+بعد از ادمین کردن اکانت، روی «✅ انجام شد» بزنید."""
+
     await update.message.reply_text(
         f"""✅ <b>کانال مقصد ثبت شد.</b>
 
 📥 <b>مبدا:</b> {source_channel}
 📤 <b>مقصد:</b> {target_channel}
 
-🤖 حالا فقط ربات رو در کانال مقصد ادمین کن.
-
-بعد از اینکه ربات رو ادمین کردی، روی دکمه «✅ انجام شد» بزن.""",
+{admin_text}""",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
@@ -1568,41 +1580,112 @@ async def finish_transfer(
             )
 
     # =====================================================
-    # بررسی ادمین بودن ربات در مقصد
+    # بررسی ادمین بودن اکانت ارسال کننده
     # =====================================================
 
-    try:
+    if account_type == "bot":
 
-        me = await context.bot.get_me()
+        # اکانت ثابت متصل به پروژه
+        # باید ادمین مقصد باشد
 
-        bot_member = await context.bot.get_chat_member(
-            chat_id=target_channel,
-            user_id=me.id,
-        )
+        try:
 
-    except Exception as e:
+            participant = await tg_client(
+                GetParticipantRequest(
+                    target_channel,
+                    "me",
+                )
+            )
 
-        print(
-            "[BOT ADMIN CHECK ERROR]",
-            e,
-        )
+            if not isinstance(
+                participant.participant,
+                (
+                    ChannelParticipantAdmin,
+                    ChannelParticipantCreator,
+                ),
+            ):
 
-        await query.message.reply_text("""❌ ربات هنوز ادمین کانال مقصد نیست.
+                await query.message.reply_text(
+                    """❌ اکانت متصل به ربات هنوز ادمین کانال مقصد نیست.
 
-لطفاً ربات را در کانال مقصد ادمین کن و دوباره روی «✅ انجام شد» بزن.""")
+لطفاً اکانت @egpora_e3 را در کانال مقصد ادمین کنید.
 
-        return
+بعد دوباره روی «✅ انجام شد» بزنید."""
+                )
 
-    if bot_member.status not in (
-        "administrator",
-        "creator",
-    ):
+                return
 
-        await query.message.reply_text("""❌ ربات هنوز ادمین کانال مقصد نیست.
+        except Exception as e:
 
-لطفاً ربات را در کانال مقصد ادمین کن و دوباره روی «✅ انجام شد» بزن.""")
+            print(
+                "[BOT ACCOUNT ADMIN CHECK]",
+                e,
+            )
 
-        return
+            await query.message.reply_text(
+                """❌ اکانت @egpora_e3 هنوز ادمین کانال مقصد نیست.
+
+لطفاً ابتدا آن را ادمین کنید و دوباره روی «✅ انجام شد» بزنید."""
+            )
+
+            return
+
+    else:
+
+        # =================================================
+        # اکانت شخصی خود کاربر
+        # =================================================
+
+        user_client = await get_user_telegram_client(user_id)
+
+        if not user_client:
+
+            await query.message.reply_text("""❌ اتصال اکانت شما پیدا نشد.
+
+ابتدا اکانت خودتان را از بخش «📲 اتصال اکانت» وصل کنید.""")
+
+            return
+
+        try:
+
+            participant = await user_client(GetParticipantRequest(target_channel, "me"))
+
+            if not isinstance(
+                participant.participant,
+                (
+                    ChannelParticipantAdmin,
+                    ChannelParticipantCreator,
+                ),
+            ):
+
+                await user_client.disconnect()
+
+                await query.message.reply_text(
+                    """❌ اکانت شما هنوز ادمین کانال مقصد نیست.
+
+لطفاً همان اکانتی که به ربات وصل کرده‌اید را در کانال مقصد ادمین کنید.
+
+بعد دوباره روی «✅ انجام شد» بزنید."""
+                )
+
+                return
+
+        except Exception as e:
+
+            print(
+                "[USER ACCOUNT ADMIN CHECK]",
+                e,
+            )
+
+            await user_client.disconnect()
+
+            await query.message.reply_text("""❌ اکانت شما هنوز ادمین کانال مقصد نیست.
+
+لطفاً اکانت متصل خودتان را ادمین کنید و دوباره روی «✅ انجام شد» بزنید.""")
+
+            return
+
+        await user_client.disconnect()
 
     # =====================================================
     # ثبت انتقال

@@ -162,7 +162,8 @@ def get_all_transfers():
             telegram_id,
             source_channel,
             target_channel,
-            enabled
+            enabled,
+            account_type
         FROM transfers
     """)
     return cursor.fetchall()

@@ -1,6 +1,8 @@
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageEntityCustomEmoji
 from telethon.tl import functions, types
+from telethon.sessions import StringSession
+from database import get_account
 
 import asyncio
 import os
@@ -28,6 +30,52 @@ polling_tasks = {}
 last_messages = {}
 
 channel_pts = {}
+
+
+# ------------------- get transfer client --------------------
+
+
+async def get_transfer_client(
+    telegram_id,
+    account_type,
+):
+    """
+    مشخص می‌کند انتقال با کدام اکانت انجام شود.
+
+    bot  -> tg_client
+    user -> Session همان کاربر
+    """
+
+    if account_type == "bot":
+        return tg_client, False
+
+    account = get_account(telegram_id)
+
+    if not account:
+        raise RuntimeError("اکانت کاربر پیدا نشد.")
+
+    api_id = account[1]
+    api_hash = account[2]
+    session_string = account[4]
+
+    if not api_id or not api_hash or not session_string:
+        raise RuntimeError("اطلاعات Session اکانت کاربر کامل نیست.")
+
+    client = TelegramClient(
+        StringSession(session_string),
+        int(api_id),
+        api_hash,
+    )
+
+    await client.connect()
+
+    if not await client.is_user_authorized():
+
+        await client.disconnect()
+
+        raise RuntimeError("Session اکانت کاربر معتبر نیست.")
+
+    return client, True
 
 
 # ------------------- stop transfer listener --------------------
@@ -300,30 +348,31 @@ async def polling_worker(
     target_entity,
     transfer_id=None,
 ):
-    source_id = source_entity.id
-    target_id = target_entity.id
-
-    transfer_key = (
-        source_id,
-        target_id,
-    )
+    transfer_key = transfer_id
 
     while True:
 
         try:
 
-            # بررسی وضعیت انتقال
             transfers = get_all_transfers()
 
-            enabled = False
+            transfer = None
 
-            for transfer in transfers:
-                if transfer[0] == transfer_id:
-                    enabled = transfer[4] == 1
+            for item in transfers:
+
+                if item[0] == transfer_id:
+                    transfer = item
                     break
 
-            # اگر انتقال متوقف شده بود
+            if not transfer:
+
+                await asyncio.sleep(3)
+                continue
+
+            enabled = transfer[4] == 1
+
             if not enabled:
+
                 await asyncio.sleep(3)
                 continue
 
@@ -333,6 +382,7 @@ async def polling_worker(
             )
 
             if not messages:
+
                 await asyncio.sleep(2)
                 continue
 
@@ -348,10 +398,16 @@ async def polling_worker(
                 if message.id <= last_id:
                     continue
 
-                if message.grouped_id and message.id != max(
-                    m.id for m in messages if m.grouped_id == message.grouped_id
-                ):
-                    continue
+                if message.grouped_id:
+
+                    grouped_ids = [
+                        m.id for m in messages if m.grouped_id == message.grouped_id
+                    ]
+
+                    if grouped_ids:
+
+                        if message.id != max(grouped_ids):
+                            continue
 
                 last_messages[transfer_key] = message.id
 
@@ -364,7 +420,16 @@ async def polling_worker(
 
             await asyncio.sleep(2)
 
-        except Exception:
+        except asyncio.CancelledError:
+
+            break
+
+        except Exception as e:
+
+            print(
+                f"[TRANSFER {transfer_id} ERROR]",
+                e,
+            )
 
             await asyncio.sleep(5)
 
@@ -383,12 +448,11 @@ async def register_listener(
 
     target_entity = await client.get_entity(target_channel)
 
-    transfer_key = (
-        source_entity.id,
-        target_entity.id,
-    )
+    # هر انتقال Listener مستقل خودش را دارد
+    transfer_key = transfer_id
 
     if transfer_key in polling_tasks:
+
         return
 
     task = asyncio.create_task(
@@ -401,6 +465,15 @@ async def register_listener(
     )
 
     polling_tasks[transfer_key] = task
+
+    registered_listeners.add(transfer_key)
+
+    print(
+        f"[LISTENER STARTED] "
+        f"transfer={transfer_id} "
+        f"source={source_channel} "
+        f"target={target_channel}"
+    )
 
 
 # =========================================================
@@ -418,16 +491,6 @@ async def start_all_listeners():
 
     for transfer in transfers:
 
-        # IMPORTANT:
-        #
-        # database returns:
-        #
-        # id,
-        # telegram_id,
-        # source_channel,
-        # target_channel,
-        # enabled
-
         transfer_id = transfer[0]
 
         telegram_id = transfer[1]
@@ -438,20 +501,43 @@ async def start_all_listeners():
 
         enabled = transfer[4]
 
+        account_type = transfer[5]
+
         if enabled != 1:
             continue
 
+        client = None
+        should_disconnect = False
+
         try:
 
+            client, should_disconnect = await get_transfer_client(
+                telegram_id,
+                account_type,
+            )
+
             await register_listener(
-                client=tg_client,
+                client=client,
                 source_channel=source,
                 target_channel=target,
                 transfer_id=transfer_id,
             )
 
-        except Exception:
-            pass
+            print(f"[TRANSFER RESTORED] " f"id={transfer_id} " f"type={account_type}")
+
+        except Exception as e:
+
+            print(
+                f"[TRANSFER RESTORE ERROR] " f"id={transfer_id}:",
+                e,
+            )
+
+            if should_disconnect and client:
+
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
 
 
 # =========================================================
@@ -466,21 +552,7 @@ async def add_new_transfer(
 ):
 
     transfer_id = None
-
-    source_entity = await tg_client.get_entity(source_channel)
-    target_entity = await tg_client.get_entity(target_channel)
-
-    key = (
-        source_entity.id,
-        target_entity.id,
-    )
-
-    if key in polling_tasks or key in registered_listeners:
-        return
-
-    # -----------------------------------------------------
-    # پیدا کردن ID انتقال تازه ثبت شده
-    # -----------------------------------------------------
+    account_type = "bot"
 
     transfers = get_all_transfers()
 
@@ -494,16 +566,34 @@ async def add_new_transfer(
         ):
 
             transfer_id = transfer[0]
+            account_type = transfer[5] or "bot"
 
             break
 
-    # -----------------------------------------------------
-    # Register
-    # -----------------------------------------------------
+    if transfer_id is None:
 
-    await register_listener(
-        client=tg_client,
-        source_channel=source_channel,
-        target_channel=target_channel,
-        transfer_id=transfer_id,
-    )
+        print("[ADD LISTENER] transfer not found")
+        return
+
+    try:
+
+        client, should_disconnect = await get_transfer_client(
+            telegram_id,
+            account_type,
+        )
+
+        await register_listener(
+            client=client,
+            source_channel=source_channel,
+            target_channel=target_channel,
+            transfer_id=transfer_id,
+        )
+
+        print(f"[ADD LISTENER] " f"id={transfer_id} " f"type={account_type}")
+
+    except Exception as e:
+
+        print(
+            f"[ADD LISTENER ERROR] " f"id={transfer_id}:",
+            e,
+        )
