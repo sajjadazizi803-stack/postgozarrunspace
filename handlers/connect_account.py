@@ -61,7 +61,52 @@ async def connect_account(
     context.user_data["client_type"] = account_type
 
     # ==========================================
-    # محدودیت انتقال
+    # اگر انتقال با اکانت شخصی است
+    # اول بررسی کنیم اکانت وصل شده یا نه
+    # ==========================================
+
+    if account_type == "user":
+
+        from database import get_account
+
+        account = get_account(user_id)
+
+        # اگر اطلاعات اکانت وجود ندارد
+        if not account:
+
+            await update.message.reply_text(
+                """⚠️ هنوز اکانتت رو به ربات وصل نکردی.
+
+اول از بخش «📲 اتصال اکانت» اکانتت رو به ربات وصل کن، بعد دوباره از قسمت «➕ افزودن انتقال» با اکانت خودت انتقال ثبت کن."""
+            )
+
+            context.user_data["state"] = State.NONE
+
+            return
+
+        # بررسی API ID
+        api_id = account[1] if len(account) > 1 else None
+
+        # بررسی API HASH
+        api_hash = account[2] if len(account) > 2 else None
+
+        # بررسی شماره
+        phone = account[3] if len(account) > 3 else None
+
+        if not api_id or not api_hash or not phone:
+
+            await update.message.reply_text(
+                """⚠️ هنوز اتصال اکانتت کامل نشده.
+
+اول از بخش «📲 اتصال اکانت» مراحل اتصال اکانت رو کامل کن، بعد دوباره انتقال رو ثبت کن."""
+            )
+
+            context.user_data["state"] = State.NONE
+
+            return
+
+    # ==========================================
+    # محدودیت تعداد انتقال
     # ==========================================
 
     transfer_count = get_user_transfer_count(
@@ -128,7 +173,7 @@ async def connect_account(
         return
 
     # ==========================================
-    # شروع ثبت انتقال جدید
+    # شروع ثبت انتقال
     # ==========================================
 
     if update.callback_query:
