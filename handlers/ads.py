@@ -708,7 +708,13 @@ async def receive_ads_message(
     context: ContextTypes.DEFAULT_TYPE,
 ):
 
-    if update.effective_user.id != ADMIN_ID:
+    user = update.effective_user
+
+    # بعضی Updateها کاربر ندارند، مثل بعضی پیام‌های کانال
+    if user is None:
+        return
+
+    if user.id != ADMIN_ID:
         return
 
     state = context.user_data.get("ads_state")
@@ -722,6 +728,9 @@ async def receive_ads_message(
         return
 
     message = update.effective_message
+
+    if message is None:
+        return
 
     conn = get_connection()
     cur = conn.cursor()
