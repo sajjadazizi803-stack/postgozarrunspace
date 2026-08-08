@@ -30,8 +30,10 @@ CREATE TABLE IF NOT EXISTS transfers(
     last_send TEXT,
     remove_last_lines INTEGER DEFAULT 0,
     append_last_lines TEXT DEFAULT ''
+    account_type TEXT DEFAULT 'bot'
 )
 """)
+# ----------------------------- db.comit --------------------------------
 
 db.commit()
 
@@ -51,21 +53,39 @@ CREATE TABLE IF NOT EXISTS accounts(
 
 db.commit()
 
+
+columns = [row[1] for row in cursor.execute("PRAGMA table_info(transfers)").fetchall()]
+
+if "account_type" not in columns:
+    cursor.execute("ALTER TABLE transfers ADD COLUMN account_type TEXT DEFAULT 'bot'")
+    db.commit()
+
 # ================= add Transfers =================
 
 
-def add_transfer(telegram_id, source_channel, target_channel):
+def add_transfer(
+    telegram_id,
+    source_channel,
+    target_channel,
+    account_type="bot",
+):
 
     cursor.execute(
         """
         INSERT INTO transfers
-        (telegram_id, source_channel, target_channel)
-        VALUES (?, ?, ?)
+        (
+            telegram_id,
+            source_channel,
+            target_channel,
+            account_type
+        )
+        VALUES (?, ?, ?, ?)
         """,
         (
             telegram_id,
             source_channel,
             target_channel,
+            account_type,
         ),
     )
 
@@ -98,6 +118,37 @@ def get_user_transfers(telegram_id):
     )
 
     return cursor.fetchall()
+
+
+# ------------------- get user transfer count ------------------
+
+
+def get_user_transfer_count(
+    telegram_id,
+    account_type,
+):
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM transfers
+        WHERE telegram_id=?
+        AND account_type=?
+        """,
+        (
+            telegram_id,
+            account_type,
+        ),
+    )
+
+    count = cur.fetchone()[0]
+
+    conn.close()
+
+    return count
 
 
 # ------------------- get all transfers ------------------

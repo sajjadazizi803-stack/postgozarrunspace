@@ -17,6 +17,7 @@ from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.errors import UserNotParticipantError
 from telethon.tl import functions
 from database import update_transfer_target
+from database import get_user_transfer_count
 
 from database import (
     delete_transfer,
@@ -41,23 +42,69 @@ change_target_states = {}
 # =========================
 
 
-async def connect_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def connect_account(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
 
     user_id = update.effective_user.id
 
+    account_type = context.user_data.get(
+        "transfer_account_type",
+        context.user_data.get(
+            "account_type",
+            "user",
+        ),
+    )
+
+    context.user_data["account_type"] = account_type
+    context.user_data["client_type"] = account_type
+
     # ==========================================
-    # بررسی اینکه کاربر قبلاً انتقال دارد یا نه
+    # محدودیت انتقال
     # ==========================================
 
-    transfers = get_user_transfers(user_id)
+    transfer_count = get_user_transfer_count(
+        user_id,
+        account_type,
+    )
 
-    if transfers:
+    # اکانت ربات فقط 1 انتقال
+    if account_type == "bot" and transfer_count >= 1:
 
         text = (
-            "⚠️ <b>شما قبلاً یک انتقال ثبت کرده‌اید.</b>\n\n"
+            "⚠️ <b>شما قبلاً یک انتقال با اکانت ربات ثبت کرده‌اید.</b>\n\n"
             "برای تغییر کانال مبدا یا مقصد، "
             "به بخش «📋 انتقال‌های ثبت شده» بروید "
             "و از همان‌جا کانال موردنظر را تغییر دهید."
+        )
+
+        if update.callback_query:
+
+            await update.callback_query.answer()
+
+            await update.callback_query.edit_message_text(
+                text,
+                parse_mode="HTML",
+            )
+
+        else:
+
+            await update.message.reply_text(
+                text,
+                parse_mode="HTML",
+            )
+
+        context.user_data["state"] = State.NONE
+
+        return
+
+    # اکانت شخصی حداکثر 5 انتقال
+    if account_type == "user" and transfer_count >= 5:
+
+        text = (
+            "⚠️ <b>به حداکثر تعداد انتقال رسیده‌اید.</b>\n\n"
+            "با اکانت شخصی حداکثر ۵ انتقال می‌توانید ثبت کنید."
         )
 
         if update.callback_query:
@@ -1281,10 +1328,19 @@ async def finish_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ثبت انتقال
     # ----------------------------------
 
+    account_type = context.user_data.get(
+        "account_type",
+        context.user_data.get(
+            "transfer_account_type",
+            "bot",
+        ),
+    )
+
     add_transfer(
         query.from_user.id,
         source_channel,
         target_channel,
+        account_type,
     )
 
     await add_new_transfer(
