@@ -24,17 +24,6 @@ from telethon.errors import (
     PhoneCodeExpiredError,
 )
 
-from handlers.ads import (
-    ads_buttons,
-    ads_message,
-    receive_group,
-    receive_interval,
-    receive_ads_message,
-    WAIT_GROUP,
-    WAIT_INTERVAL,
-    start_all_ads,
-)
-
 from handlers.connect_account import (
     connect_account,
     receive_source_channel,
@@ -71,9 +60,7 @@ from handlers.connect_account import append_lines_setting
 from database import set_append_last_lines
 from config import ADMIN_ID
 from telegram import KeyboardButton, ReplyKeyboardMarkup
-from handlers.ads import ads_panel
 from conversation import State
-from handlers.ads import receive_group
 from pathlib import Path
 from database import save_api_id
 from database import save_api_hash
@@ -574,32 +561,6 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "state",
         State.NONE,
     )
-
-    # =====================================================
-    # تبلیغات
-    # =====================================================
-
-    if user_data.get("ads_state") == "WAIT_GROUP":
-
-        if text not in MAIN_BUTTONS:
-
-            await receive_group(
-                update,
-                context,
-            )
-
-            return
-
-    if user_data.get("ads_state") == "WAIT_INTERVAL":
-
-        if text not in MAIN_BUTTONS:
-
-            await receive_interval(
-                update,
-                context,
-            )
-
-            return
 
     # =========================
     # دریافت کانال مبدا
@@ -1285,10 +1246,7 @@ def create_bot():
     from telegram.ext import CallbackQueryHandler
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("ads", ads_panel))
-
     app.add_handler(CallbackQueryHandler(check_join, pattern=r"^check_join$"))
-    app.add_handler(CallbackQueryHandler(ads_buttons, pattern=r"^ads_"))
     app.add_handler(CallbackQueryHandler(transfer_info, pattern=r"^transfer_\d+$"))
     app.add_handler(
         CallbackQueryHandler(delete_transfer_callback, pattern=r"^delete_\d+$")
@@ -1330,17 +1288,7 @@ def create_bot():
     app.add_handler(
         CallbackQueryHandler(finish_change_target, pattern=r"^finish_change_target$")
     )
-    app.add_handler(CallbackQueryHandler(ads_message, pattern=r"^ads_message_\d+$"))
     app.add_handler(CallbackQueryHandler(buttons))
-
-    # ترتیب این سه هندلر مهم است
-    app.add_handler(
-        MessageHandler(
-            filters.ALL & ~filters.COMMAND,
-            receive_ads_message,
-        ),
-        group=0,
-    )
 
     app.add_handler(
         MessageHandler(
@@ -1378,7 +1326,6 @@ def create_bot():
             from listener import start_all_listeners
 
             await start_all_listeners()
-            await start_all_ads(app)
         except Exception:
             pass
 

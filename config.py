@@ -16,16 +16,3 @@ SESSION_FOLDER = "sessions"
 SUPPORT = "support"
 
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
-
-from enum import Enum, auto
-
-
-class AdState(Enum):
-
-    ADD_GROUP = auto()
-
-    SET_TEXT = auto()
-
-    SET_FORWARD = auto()
-
-    SET_INTERVAL = auto()
