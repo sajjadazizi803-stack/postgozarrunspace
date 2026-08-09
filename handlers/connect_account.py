@@ -79,10 +79,7 @@ async def get_user_telegram_client(user_id):
 
     except Exception as e:
 
-        print(
-            "[USER SESSION ERROR]",
-            e,
-        )
+        pass
 
         return None
 
@@ -265,11 +262,6 @@ async def receive_source_channel(
 
     context.user_data["account_type"] = account_type
     context.user_data["client_type"] = account_type
-
-    print(
-        "[TRANSFER ACCOUNT]",
-        account_type,
-    )
 
     if not update.message or not update.message.text:
         return
@@ -498,11 +490,6 @@ async def receive_target_channel(
 
     context.user_data["account_type"] = account_type
     context.user_data["use_bot_session"] = account_type == "bot"
-
-    print(
-        "[TRANSFER ACCOUNT]",
-        account_type,
-    )
 
     target_channel = update.message.text.strip()
 
@@ -1459,10 +1446,7 @@ async def finish_transfer(
 
         except Exception as e:
 
-            print(
-                "[USER SOURCE CHECK ERROR]",
-                e,
-            )
+            pass
 
             await user_client.disconnect()
 
@@ -1501,10 +1485,7 @@ async def finish_transfer(
 
         except Exception as e:
 
-            print(
-                "[USER TARGET CHECK ERROR]",
-                e,
-            )
+            pass
 
             await user_client.disconnect()
 
@@ -1546,10 +1527,7 @@ async def finish_transfer(
 
         except Exception as e:
 
-            print(
-                "[BOT SOURCE CHECK ERROR]",
-                e,
-            )
+            pass
 
         # -------------------------------------------------
         # بررسی عضویت ربات در مقصد
@@ -1572,10 +1550,7 @@ async def finish_transfer(
 
         except Exception as e:
 
-            print(
-                "[BOT TARGET CHECK ERROR]",
-                e,
-            )
+            pass
 
     # =====================================================
     # بررسی ادمین بودن اکانت ارسال کننده
@@ -1615,10 +1590,7 @@ async def finish_transfer(
 
         except Exception as e:
 
-            print(
-                "[BOT ACCOUNT ADMIN CHECK]",
-                e,
-            )
+            pass
 
             await query.message.reply_text(
                 """❌ اکانت @egpora_e3 هنوز ادمین کانال مقصد نیست.
@@ -1670,10 +1642,7 @@ async def finish_transfer(
 
         except Exception as e:
 
-            print(
-                "[USER ACCOUNT ADMIN CHECK]",
-                e,
-            )
+            pass
 
             await user_client.disconnect()
 
@@ -1700,10 +1669,7 @@ async def finish_transfer(
 
     except Exception as e:
 
-        print(
-            "[ADD TRANSFER ERROR]",
-            e,
-        )
+        pass
 
         await query.message.reply_text("❌ ثبت انتقال انجام نشد.")
 
@@ -1723,10 +1689,7 @@ async def finish_transfer(
 
     except Exception as e:
 
-        print(
-            "[LISTENER START ERROR]",
-            e,
-        )
+        pass
 
         await query.message.reply_text(
             """⚠️ انتقال ثبت شد، اما فعال‌سازی انتقال خودکار با مشکل مواجه شد.

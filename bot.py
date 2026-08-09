@@ -213,9 +213,7 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(
             f"""👋 <b>سلام {query.from_user.first_name}، به ربات RunSpace خوش اومدی 🚀</b>
 
-✨ با این ربات می‌تونی کانالت رو بهتر مدیریت کنی.
-
-⚠️ <b>قبل از استفاده، حتماً نکات مهم رو از بخش آموزش بخون.</b>""",
+⚠️ <b>قبل از استفاده، حتماً بخش آموزش رو بخون</b>""",
             parse_mode="HTML",
         )
 
@@ -278,9 +276,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(
                     f"""👋 <b>سلام {first_name}، به ربات RunSpace خوش اومدی 🚀</b>
 
-✨ با این ربات می‌تونی کانالت رو بهتر مدیریت کنی.
-
-⚠️ <b>قبل از استفاده، حتماً نکات مهم رو از بخش آموزش بخون.</b>""",
+⚠️ <b>قبل از استفاده، حتماً بخش آموزش رو بخون</b>""",
                     parse_mode="HTML",
                     reply_markup=keyboard,
                 )
@@ -534,40 +530,76 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None:
         return
 
+    if update.message.text is None:
+        return
+
     user_data = context.user_data
 
-    state = user_data.get("state", State.NONE)
+    text = update.message.text.strip()
 
-    if user_data.get("ads_state") == "WAIT_GROUP":
-        await receive_group(update, context)
-        return
+    # =====================================================
+    # تمام دکمه‌های اصلی ربات
+    # =====================================================
 
-    if user_data.get("ads_state") == "WAIT_INTERVAL":
-        await receive_interval(update, context)
-        return
-
-    if user_data is None:
-        return
-
-    text = update.message.text if update.message.text else ""
-
-    MAIN_BUTTONS = [
+    MAIN_BUTTONS = {
         "➕ افزودن انتقال",
         "📋 انتقال‌های ثبت شده",
         "📚 آموزش استفاده",
+        "📲 اتصال اکانت",
         "💬 ارتباط با پشتیبانی",
         "📢 کانال",
         "👥 گروه",
+        "👤 با اکانت خودم",
+        "🤖 با اکانت ربات",
+        "🏠",
+        "🏠 خانه",
         "🔙",
-        "📲 اتصال اکانت",
-    ]
+    }
+
+    # =====================================================
+    # اگر کاربر دکمه‌ای زده، انتظار قبلی را لغو کن
+    # =====================================================
 
     if text in MAIN_BUTTONS:
 
-        if user_data.get("ads_state") not in ("WAIT_GROUP", "WAIT_INTERVAL"):
-            clear_waiting_state(context)
-            user_data["state"] = State.NONE
-            state = State.NONE
+        clear_waiting_state(context)
+
+        user_data["state"] = State.NONE
+
+    # =====================================================
+    # state جدید را بعد از لغو state قبلی بخوان
+    # =====================================================
+
+    state = user_data.get(
+        "state",
+        State.NONE,
+    )
+
+    # =====================================================
+    # تبلیغات
+    # =====================================================
+
+    if user_data.get("ads_state") == "WAIT_GROUP":
+
+        if text not in MAIN_BUTTONS:
+
+            await receive_group(
+                update,
+                context,
+            )
+
+            return
+
+    if user_data.get("ads_state") == "WAIT_INTERVAL":
+
+        if text not in MAIN_BUTTONS:
+
+            await receive_interval(
+                update,
+                context,
+            )
+
+            return
 
     # =========================
     # دریافت کانال مبدا
@@ -1011,12 +1043,6 @@ async def conversation_router(update, context):
             except Exception:
                 pass
 
-            print(
-                "SEND LOGIN CODE ERROR:",
-                type(e).__name__,
-                str(e),
-            )
-
             try:
                 await status_message.delete()
             except Exception:
@@ -1157,11 +1183,7 @@ async def conversation_router(update, context):
 
         except Exception as e:
 
-            print(
-                "LOGIN ERROR:",
-                type(e).__name__,
-                str(e),
-            )
+            pass
 
             try:
                 await client.disconnect()
@@ -1207,8 +1229,6 @@ async def conversation_router(update, context):
 
             session_string = client.session.save()
 
-            print(f"[LOGIN] Session saved for user {update.effective_user.id}")
-
             save_session(
                 update.effective_user.id,
                 session_string,
@@ -1243,7 +1263,7 @@ async def conversation_router(update, context):
 
         except Exception as e:
 
-            print("[2FA ERROR]", type(e).__name__, str(e))
+            pass
 
             await update.message.reply_text(f"❌ خطا:\n{type(e).name}")
 

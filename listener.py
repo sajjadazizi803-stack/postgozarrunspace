@@ -426,10 +426,7 @@ async def polling_worker(
 
         except Exception as e:
 
-            print(
-                f"[TRANSFER {transfer_id} ERROR]",
-                e,
-            )
+            pass
 
             await asyncio.sleep(5)
 
@@ -467,13 +464,6 @@ async def register_listener(
     polling_tasks[transfer_key] = task
 
     registered_listeners.add(transfer_key)
-
-    print(
-        f"[LISTENER STARTED] "
-        f"transfer={transfer_id} "
-        f"source={source_channel} "
-        f"target={target_channel}"
-    )
 
 
 # =========================================================
@@ -523,14 +513,9 @@ async def start_all_listeners():
                 transfer_id=transfer_id,
             )
 
-            print(f"[TRANSFER RESTORED] " f"id={transfer_id} " f"type={account_type}")
-
         except Exception as e:
 
-            print(
-                f"[TRANSFER RESTORE ERROR] " f"id={transfer_id}:",
-                e,
-            )
+            pass
 
             if should_disconnect and client:
 
@@ -572,7 +557,6 @@ async def add_new_transfer(
 
     if transfer_id is None:
 
-        print("[ADD LISTENER] transfer not found")
         return
 
     try:
@@ -589,11 +573,6 @@ async def add_new_transfer(
             transfer_id=transfer_id,
         )
 
-        print(f"[ADD LISTENER] " f"id={transfer_id} " f"type={account_type}")
-
     except Exception as e:
 
-        print(
-            f"[ADD LISTENER ERROR] " f"id={transfer_id}:",
-            e,
-        )
+        pass
