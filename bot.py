@@ -31,6 +31,9 @@ from handlers.connect_account import (
     finish_transfer,
     start_group_registration,
     receive_group,
+    group_message_callback,
+    group_schedule_callback,
+    receive_group_message,
 )
 
 from handlers.connect_account import (
@@ -919,7 +922,93 @@ async def conversation_router(update, context):
     if update.message is None:
         return
 
-    if update.message.text is None:
+    user_data = context.user_data or {}
+
+    state = user_data.get(
+        "state",
+        State.NONE,
+    )
+
+    # ==========================================
+    # دریافت پیام / بنر گروه
+    # ==========================================
+
+    if state == State.GROUP_MESSAGE:
+
+        from handlers.connect_account import (
+            receive_group_message,
+        )
+
+        return await receive_group_message(
+            update,
+            context,
+        )
+
+    # ==========================================
+    # دریافت زمان‌بندی گروه
+    # ==========================================
+
+    if state == State.GROUP_SCHEDULE:
+
+        if not update.message.text:
+
+            await update.message.reply_text(
+                "❌ لطفاً فقط عدد را بر اساس دقیقه ارسال کنید."
+            )
+
+            return
+
+        try:
+
+            minutes = int(update.message.text.strip())
+
+        except ValueError:
+
+            await update.message.reply_text("""❌ مقدار نامعتبر است.
+
+لطفاً فقط یک عدد صحیح بر اساس دقیقه ارسال کنید.
+مثال: 1 یا 20 یا 120""")
+
+            return
+
+        if minutes < 1:
+
+            await update.message.reply_text(
+                "❌ زمان‌بندی نمی‌تواند کمتر از ۱ دقیقه باشد."
+            )
+
+            return
+
+        group_db_id = context.user_data.get("group_schedule_id")
+
+        if not group_db_id:
+
+            context.user_data["state"] = State.NONE
+
+            await update.message.reply_text("❌ اطلاعات گروه پیدا نشد.")
+
+            return
+
+        from database import set_group_schedule
+
+        set_group_schedule(
+            registered_group_id=group_db_id,
+            user_id=update.effective_user.id,
+            minutes=minutes,
+        )
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text(
+            f"""✅ <b>زمان‌بندی ذخیره شد.</b>
+
+⏱ فاصله ارسال:
+<b>{minutes} دقیقه</b>
+
+از این به بعد این مقدار برای زمان‌بندی ارسال گروه ثبت شده است.""",
+            parse_mode="HTML",
+        )
+
         return
 
     user_data = context.user_data or {}
@@ -1363,6 +1452,21 @@ def create_bot():
     app.add_handler(
         CallbackQueryHandler(finish_change_target, pattern=r"^finish_change_target$")
     )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            group_message_callback,
+            pattern=r"^group_message_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            group_schedule_callback,
+            pattern=r"^group_schedule_\d+$",
+        )
+    )
+
     app.add_handler(CallbackQueryHandler(buttons))
 
     app.add_handler(
@@ -1375,7 +1479,7 @@ def create_bot():
 
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
+            filters.ALL & ~filters.COMMAND,
             conversation_router,
         ),
         group=2,

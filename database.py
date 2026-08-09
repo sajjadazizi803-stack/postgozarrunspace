@@ -89,6 +89,39 @@ CREATE TABLE IF NOT EXISTS registered_groups(
 
 db.commit()
 
+# ================= GROUP MESSAGES =================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS group_messages(
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    registered_group_id INTEGER UNIQUE NOT NULL,
+
+    user_id INTEGER NOT NULL,
+
+    message_type TEXT NOT NULL,
+
+    message_text TEXT,
+
+    caption TEXT,
+
+    file_path TEXT,
+
+    forward_chat_id INTEGER,
+
+    forward_message_id INTEGER,
+
+    schedule_minutes INTEGER,
+
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+db.commit()
+
 # ================= add Transfers =================
 
 
@@ -618,3 +651,116 @@ def get_user_groups(user_id):
     )
 
     return cursor.fetchall()
+
+
+# ================= GROUP MESSAGE FUNCTIONS =================
+
+
+def save_group_message(
+    registered_group_id,
+    user_id,
+    message_type,
+    message_text=None,
+    caption=None,
+    file_path=None,
+    forward_chat_id=None,
+    forward_message_id=None,
+):
+
+    cursor.execute(
+        """
+        DELETE FROM group_messages
+        WHERE registered_group_id=?
+        """,
+        (registered_group_id,),
+    )
+
+    cursor.execute(
+        """
+        INSERT INTO group_messages
+        (
+            registered_group_id,
+            user_id,
+            message_type,
+            message_text,
+            caption,
+            file_path,
+            forward_chat_id,
+            forward_message_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            registered_group_id,
+            user_id,
+            message_type,
+            message_text,
+            caption,
+            file_path,
+            forward_chat_id,
+            forward_message_id,
+        ),
+    )
+
+    db.commit()
+
+    return cursor.lastrowid
+
+
+def get_group_message(
+    registered_group_id,
+    user_id,
+):
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            registered_group_id,
+            user_id,
+            message_type,
+            message_text,
+            caption,
+            file_path,
+            forward_chat_id,
+            forward_message_id,
+            schedule_minutes,
+            created_at,
+            updated_at
+        FROM group_messages
+        WHERE registered_group_id=?
+        AND user_id=?
+        LIMIT 1
+        """,
+        (
+            registered_group_id,
+            user_id,
+        ),
+    )
+
+    return cursor.fetchone()
+
+
+def set_group_schedule(
+    registered_group_id,
+    user_id,
+    minutes,
+):
+
+    cursor.execute(
+        """
+        UPDATE group_messages
+        SET
+            schedule_minutes=?,
+            updated_at=CURRENT_TIMESTAMP
+        WHERE registered_group_id=?
+        AND user_id=?
+        """,
+        (
+            minutes,
+            registered_group_id,
+            user_id,
+        ),
+    )
+
+    db.commit()

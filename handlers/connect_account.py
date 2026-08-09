@@ -37,6 +37,9 @@ from database import (
     update_transfer_source,
     update_transfer_target,
     get_transfer_by_id,
+    save_group_message,
+    get_group_message,
+    set_group_schedule,
 )
 
 from telethon import TelegramClient
@@ -316,7 +319,6 @@ async def receive_group(
 📌 <b>لینک:</b> {group_link}
 
 برای ادامه و تنظیم پیام و زمان‌بندی ارسال، بعداً از بخش: 📋 <b>انتقال‌های ثبت شده</b>
-
 گروه خود را مدیریت کنید.""",
             parse_mode="HTML",
         )
@@ -1317,7 +1319,9 @@ async def registered_group_info(
 
     group_db_id = int(query.data.split("_")[-1])
 
-    groups = get_user_groups(query.from_user.id)
+    user_id = query.from_user.id
+
+    groups = get_user_groups(user_id)
 
     group = None
 
@@ -1326,6 +1330,7 @@ async def registered_group_info(
         if item[0] == group_db_id:
 
             group = item
+
             break
 
     if group is None:
@@ -1334,25 +1339,393 @@ async def registered_group_info(
 
         return
 
-    # ساختار tuple:
-    #
-    # 0 = id
-    # 1 = group_id
-    # 2 = access_hash
-    # 3 = title
-    # 4 = username
-    # 5 = group_link
-    # 6 = enabled
-    # 7 = created_at
+    # ==========================================
+    # اطلاعات گروه
+    # ==========================================
 
     title = group[3]
+
     username = group[4]
+
     group_id = group[1]
+
     enabled = bool(group[6])
 
     username_text = f"@{username}" if username else "ندارد"
 
     status = "🟢 فعال" if enabled else "🔴 متوقف"
+
+    # ==========================================
+    # اطلاعات پیام / بنر
+    # ==========================================
+
+    group_message = get_group_message(
+        group_db_id,
+        user_id,
+    )
+
+    keyboard = []
+
+    # ==========================================
+    # اگر پیام ثبت نشده
+    # ==========================================
+
+    if not group_message:
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "📝 پیام / بنر",
+                    callback_data=f"group_message_{group_db_id}",
+                )
+            ]
+        )
+
+        schedule_text = "نامشخص"
+
+    else:
+
+        schedule_minutes = group_message[9]
+
+        if schedule_minutes:
+
+            schedule_text = f"{schedule_minutes} دقیقه"
+
+        else:
+
+            schedule_text = "نامشخص"
+
+        # -------------------------------
+        # پیام / بنر
+        # -------------------------------
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "📝 پیام / بنر",
+                    callback_data=f"group_message_{group_db_id}",
+                )
+            ]
+        )
+
+        # -------------------------------
+        # زمان‌بندی
+        # -------------------------------
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "⏱ زمان‌بندی",
+                    callback_data=f"group_schedule_{group_db_id}",
+                )
+            ]
+        )
+
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_group",
+            )
+        ]
+    )
+
+    await query.edit_message_text(
+        f"""📢 <b>اطلاعات گروه</b>
+
+👥 <b>گروه:</b> {title}
+🔗 <b>یوزرنیم:</b> {username_text}
+🆔 <b>شناسه:</b> {group_id}
+⏱ <b>فاصله ارسال:</b> {schedule_text}
+
+📊 <b>وضعیت:</b> {status}""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# =========================
+# GROUP message callback
+# =========================
+
+
+async def group_message_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    group_db_id = int(query.data.split("_")[-1])
+
+    groups = get_user_groups(query.from_user.id)
+
+    group_exists = False
+
+    for group in groups:
+
+        if group[0] == group_db_id:
+
+            group_exists = True
+
+            break
+
+    if not group_exists:
+
+        await query.edit_message_text("❌ گروه پیدا نشد.")
+
+        return
+
+    # شناسه پیامی که اطلاعات گروه را نشان می‌دهد
+    context.user_data["group_info_message_id"] = query.message.message_id
+
+    context.user_data["group_message_group_id"] = group_db_id
+
+    context.user_data["state"] = State.GROUP_MESSAGE
+
+    await query.message.reply_text(
+        """📩 <b>پیام یا بنری که می‌خواهید در گروه ارسال شود را همینجا بفرستید.</b>
+
+هر نوع پیامی که ارسال کنید برای این گروه ذخیره می‌شود.
+
+📝 متن
+🖼 عکس
+🎥 ویدئو
+📁 فایل
+🎵 صوت
+و سایر رسانه‌های پشتیبانی‌شده.
+
+اگر پیام را به صورت فوروارد ارسال کنید، در صورت امکان همان حالت فوروارد برای ارسال بعدی حفظ می‌شود.""",
+        parse_mode="HTML",
+    )
+
+
+# -------------------- receive group message --------------------
+
+
+async def receive_group_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    if context.user_data.get("state") != State.GROUP_MESSAGE:
+
+        return
+
+    if not update.message:
+
+        return
+
+    user_id = update.effective_user.id
+
+    group_db_id = context.user_data.get("group_message_group_id")
+
+    if not group_db_id:
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text("❌ اطلاعات گروه پیدا نشد.")
+
+        return
+
+    message = update.message
+
+    message_type = None
+
+    message_text = message.text
+
+    caption = message.caption
+
+    file_path = None
+
+    forward_chat_id = None
+
+    forward_message_id = None
+
+    # ==========================================
+    # بررسی فوروارد
+    # ==========================================
+
+    forward_origin = getattr(
+        message,
+        "forward_origin",
+        None,
+    )
+
+    if forward_origin:
+
+        origin_chat = getattr(
+            forward_origin,
+            "chat",
+            None,
+        )
+
+        origin_message_id = getattr(
+            forward_origin,
+            "message_id",
+            None,
+        )
+
+        if origin_chat and origin_message_id:
+
+            forward_chat_id = origin_chat.id
+
+            forward_message_id = origin_message_id
+
+            message_type = "forward"
+
+    # ==========================================
+    # پیام متنی
+    # ==========================================
+
+    if message_type is None and message.text:
+
+        message_type = "text"
+
+    # ==========================================
+    # رسانه
+    # ==========================================
+
+    if message_type is None:
+
+        media = None
+
+        extension = ".bin"
+
+        if message.photo:
+
+            media = message.photo[-1]
+
+            message_type = "photo"
+
+            extension = ".jpg"
+
+        elif message.video:
+
+            media = message.video
+
+            message_type = "video"
+
+            extension = ".mp4"
+
+        elif message.document:
+
+            media = message.document
+
+            message_type = "document"
+
+            extension = ".bin"
+
+        elif message.audio:
+
+            media = message.audio
+
+            message_type = "audio"
+
+            extension = ".mp3"
+
+        elif message.voice:
+
+            media = message.voice
+
+            message_type = "voice"
+
+            extension = ".ogg"
+
+        elif message.animation:
+
+            media = message.animation
+
+            message_type = "animation"
+
+            extension = ".mp4"
+
+        elif message.sticker:
+
+            media = message.sticker
+
+            message_type = "sticker"
+
+            extension = ".webp"
+
+        if media:
+
+            import os
+
+            from pathlib import Path
+
+            user_folder = Path("group_messages") / str(user_id)
+
+            user_folder.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+
+            file_path = user_folder / f"group_{group_db_id}{extension}"
+
+            await message.download_to_drive(custom_path=file_path)
+
+            file_path = str(file_path)
+
+    # ==========================================
+    # اگر نوع پیام قابل ذخیره نبود
+    # ==========================================
+
+    if message_type is None:
+
+        await update.message.reply_text(
+            """❌ این نوع پیام فعلاً برای ذخیره‌سازی پشتیبانی نمی‌شود.
+
+لطفاً متن، عکس، ویدئو، فایل، صوت یا پیام فورواردشده ارسال کنید."""
+        )
+
+        return
+
+    # ==========================================
+    # ذخیره در دیتابیس
+    # ==========================================
+    save_group_message(
+        registered_group_id=group_db_id,
+        user_id=user_id,
+        message_type=message_type,
+        message_text=message_text,
+        caption=caption,
+        file_path=file_path,
+        forward_chat_id=forward_chat_id,
+        forward_message_id=forward_message_id,
+    )
+
+    context.user_data["state"] = State.NONE
+
+    # ==========================================
+    # اطلاعات گروه
+    # ==========================================
+
+    groups = get_user_groups(user_id)
+
+    group = None
+
+    for item in groups:
+
+        if item[0] == group_db_id:
+
+            group = item
+
+            break
+
+    title = group[3] if group else "بدون نام"
+
+    username = group[4] if group else None
+
+    group_id = group[1] if group else "نامشخص"
+
+    username_text = f"@{username}" if username else "ندارد"
+
+    # ==========================================
+    # دکمه‌های جدید
+    # ==========================================
 
     keyboard = [
         [
@@ -1363,22 +1736,106 @@ async def registered_group_info(
         ],
         [
             InlineKeyboardButton(
+                "⏱ زمان‌بندی",
+                callback_data=f"group_schedule_{group_db_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 بازگشت",
                 callback_data="registered_group",
             )
         ],
     ]
 
-    await query.edit_message_text(
-        f"""📢 <b>اطلاعات گروه</b>
+    group_info_message_id = context.user_data.get("group_info_message_id")
+
+    # ==========================================
+    # ویرایش پیام اطلاعات گروه
+    # ==========================================
+
+    if group_info_message_id:
+
+        try:
+
+            await context.bot.edit_message_text(
+                chat_id=update.effective_chat.id,
+                message_id=group_info_message_id,
+                text=f"""📢 <b>اطلاعات گروه</b>
 
 👥 <b>گروه:</b> {title}
 🔗 <b>یوزرنیم:</b> {username_text}
 🆔 <b>شناسه:</b> {group_id}
 ⏱ <b>فاصله ارسال:</b> نامشخص
 
-📊 <b>وضعیت:</b> {status}""",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+📊 <b>وضعیت:</b> 🔴 متوقف""",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="HTML",
+            )
+
+        except Exception as e:
+
+            print(
+                "[GROUP INFO EDIT ERROR]",
+                e,
+            )
+
+    await update.message.reply_text(
+        """✅ <b>پیام / بنر با موفقیت ذخیره شد.</b>
+
+حالا می‌توانید از دکمه «⏱ زمان‌بندی» فاصله ارسال را به دقیقه تعیین کنید.""",
+        parse_mode="HTML",
+    )
+
+    return
+
+
+# =========================
+# GROUP SCHEDULE
+# =========================
+
+
+async def group_schedule_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    group_db_id = int(query.data.split("_")[-1])
+
+    group_message = get_group_message(
+        group_db_id,
+        query.from_user.id,
+    )
+
+    if not group_message:
+
+        await query.answer(
+            "❌ ابتدا پیام یا بنر را ثبت کنید.",
+            show_alert=True,
+        )
+
+        return
+
+    context.user_data["group_schedule_id"] = group_db_id
+
+    context.user_data["state"] = State.GROUP_SCHEDULE
+
+    await query.message.reply_text(
+        """⏱ <b>زمان‌بندی ارسال</b>
+
+پیام یا بنرتان را هر چند دقیقه یک‌بار می‌خواهید در گروه ارسال کنم؟
+
+🔢 فقط عدد را بر اساس دقیقه ارسال کنید.
+مثال:
+1️⃣ <code>1</code> → هر ۱ دقیقه
+2️⃣ <code>20</code> → هر ۲۰ دقیقه
+3️⃣ <code>120</code> → هر ۲ ساعت
+
+⚠️ کمتر از ۱ دقیقه قابل قبول نیست.""",
         parse_mode="HTML",
     )
 
