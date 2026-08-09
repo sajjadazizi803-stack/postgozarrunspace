@@ -39,6 +39,8 @@ from handlers.connect_account import (
     back_to_registered_channels,
     registered_channels_list,
     registered_groups_list,
+    registered_channels_from_keyboard,
+    registered_groups_from_keyboard,
     registered_group_info,
     registered_back_menu,
     transfer_settings,
@@ -510,8 +512,6 @@ async def training_add_lines(update, context):
 # =========================
 # text buttons
 # =========================
-
-
 from conversation import State
 
 
@@ -690,6 +690,24 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "نوع انتقال را انتخاب کنید:",
             reply_markup=keyboard,
+        )
+
+        return
+
+    if text == "📢 کانال" and context.user_data.get("transfer_menu") == "REGISTERED":
+
+        await registered_channels_from_keyboard(
+            update,
+            context,
+        )
+
+        return
+
+    if text == "👥 گروه" and context.user_data.get("transfer_menu") == "REGISTERED":
+
+        await registered_groups_from_keyboard(
+            update,
+            context,
         )
 
         return

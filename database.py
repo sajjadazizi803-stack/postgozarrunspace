@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS registered_groups(
 
     group_link TEXT,
 
-    enabled INTEGER DEFAULT 1,
+    enabled INTEGER DEFAULT 0,
 
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 )

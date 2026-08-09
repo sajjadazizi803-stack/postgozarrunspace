@@ -6,7 +6,13 @@ from listener import (
     add_new_transfer,
     stop_transfer_listener,
 )
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+)
+
 import jdatetime
 from datetime import datetime
 from telegram_client import tg_client
@@ -1042,23 +1048,116 @@ async def registered_channels(
     context: ContextTypes.DEFAULT_TYPE,
 ):
 
-    keyboard = [
+    context.user_data["transfer_menu"] = "REGISTERED"
+
+    keyboard = ReplyKeyboardMarkup(
         [
-            InlineKeyboardButton(
-                "📢 کانال",
-                callback_data="registered_channel",
-            ),
-            InlineKeyboardButton(
-                "👥 گروه",
-                callback_data="registered_group",
-            ),
+            [
+                KeyboardButton("📢 کانال"),
+                KeyboardButton("👥 گروه"),
+            ],
+            [
+                KeyboardButton("🔙"),
+            ],
         ],
-    ]
+        resize_keyboard=True,
+    )
 
     await update.message.reply_text(
         """📋 <b>انتقال‌های ثبت شده</b>
 
 لطفاً نوع موردی که می‌خواهید مدیریت کنید را انتخاب کنید:""",
+        reply_markup=keyboard,
+        parse_mode="HTML",
+    )
+
+
+# -------------------- registered channels from keyboard --------------------
+
+
+async def registered_channels_from_keyboard(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    context.user_data["transfer_menu"] = "REGISTERED_CHANNELS"
+
+    transfers = get_user_transfers(update.effective_user.id)
+
+    if not transfers:
+
+        await update.message.reply_text("""❌ هنوز هیچ کانالی ثبت نکرده‌اید.""")
+
+        return
+
+    keyboard = []
+
+    for transfer in transfers:
+
+        transfer_id = transfer[0]
+        source = transfer[1]
+        target = transfer[2]
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{source} ➜ {target}",
+                    callback_data=f"transfer_{transfer_id}",
+                )
+            ]
+        )
+
+    await update.message.reply_text(
+        """<b>📋 کانال‌های ثبت‌شده شما</b>
+
+🎯 تمام اتصال‌های فعال شما در این بخش نمایش داده می‌شوند.
+
+👇 برای مشاهده اطلاعات هر اتصال، کافی است روی دکمه <b>کانال مبدا ➜ مقصد</b> موردنظر بزنید.""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# -------------------- registered groups from keyboard --------------------
+
+
+async def registered_groups_from_keyboard(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    context.user_data["transfer_menu"] = "REGISTERED_GROUPS"
+
+    groups = get_user_groups(update.effective_user.id)
+
+    if not groups:
+
+        await update.message.reply_text("""❌ هنوز هیچ گروهی ثبت نکرده‌اید.""")
+
+        return
+
+    keyboard = []
+
+    for group in groups:
+
+        group_db_id = group[0]
+        title = group[3]
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"👥 {title}",
+                    callback_data=f"registered_group_{group_db_id}",
+                )
+            ]
+        )
+
+    await update.message.reply_text(
+        """<b>📋 گروه‌های ثبت‌شده شما</b>
+
+🎯 تمام گروه‌هایی که برای ارسال زمان‌بندی‌شده ثبت کرده‌اید در این بخش نمایش داده می‌شوند.
+
+👇 برای مشاهده اطلاعات هر گروه، روی گروه موردنظر بزنید.""",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
