@@ -470,8 +470,7 @@ async def receive_source_channel(
         f"""✅ <b>کانال مبدا ثبت شد.</b>
 📥 <b>مبدا:</b> {source_channel}
 📤 <b>حالا آیدی کانال مقصد را ارسال کنید.</b>
-📝 مثال:
-<code>@target_channel</code>""",
+📝 مثال: @target_channel""",
         parse_mode="HTML",
     )
 
@@ -768,8 +767,7 @@ async def receive_target_channel(
 
     if account_type == "bot":
 
-        admin_text = """🤖 حالا اکانت متصل به ربات را در کانال مقصد ادمین کنید:
-
+        admin_text = """🤖 حالا اکانت زیر را در کانال مقصد ادمین کنید:
 @egpora_e3
 
 بعد از ادمین کردن اکانت، روی «✅ انجام شد» بزنید."""
