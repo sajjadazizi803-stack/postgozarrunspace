@@ -1066,7 +1066,7 @@ async def registered_channels(
     await update.message.reply_text(
         """📋 <b>انتقال‌های ثبت شده</b>
 
-لطفاً نوع موردی که می‌خواهید مدیریت کنید را انتخاب کنید:""",
+لطفاً نوع انتقالی که می‌خواهید مدیریت کنید را انتخاب کنید:""",
         reply_markup=keyboard,
         parse_mode="HTML",
     )
@@ -1080,7 +1080,8 @@ async def registered_channels_from_keyboard(
     context: ContextTypes.DEFAULT_TYPE,
 ):
 
-    context.user_data["transfer_menu"] = "REGISTERED_CHANNELS"
+    # همچنان داخل منوی «انتقال‌های ثبت شده» هستیم
+    context.user_data["transfer_menu"] = "REGISTERED"
 
     transfers = get_user_transfers(update.effective_user.id)
 
@@ -1117,6 +1118,8 @@ async def registered_channels_from_keyboard(
         parse_mode="HTML",
     )
 
+    return
+
 
 # -------------------- registered groups from keyboard --------------------
 
@@ -1126,7 +1129,8 @@ async def registered_groups_from_keyboard(
     context: ContextTypes.DEFAULT_TYPE,
 ):
 
-    context.user_data["transfer_menu"] = "REGISTERED_GROUPS"
+    # همچنان داخل منوی «انتقال‌های ثبت شده» هستیم
+    context.user_data["transfer_menu"] = "REGISTERED"
 
     groups = get_user_groups(update.effective_user.id)
 
@@ -1161,6 +1165,8 @@ async def registered_groups_from_keyboard(
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
+
+    return
 
 
 # -------------------- registered channels list --------------------
@@ -1404,7 +1410,7 @@ async def registered_back_menu(
     await query.edit_message_text(
         """📋 <b>انتقال‌های ثبت شده</b>
 
-لطفاً نوع موردی که می‌خواهید مدیریت کنید را انتخاب کنید:""",
+لطفاً نوع انتقالی که می‌خواهید مدیریت کنید را انتخاب کنید:""",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
