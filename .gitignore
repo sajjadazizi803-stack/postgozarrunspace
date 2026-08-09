@@ -1,0 +1,34 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+pycache/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Telegram sessions
+*.session
+*.session-journal
+sessions/
+*.session-wal
+*.session-shm
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

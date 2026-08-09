@@ -1,8 +1,27 @@
+import os
 import sqlite3
 
-DB_PATH = "database.db"
+import config
 
-db = sqlite3.connect(DB_PATH, check_same_thread=False)
+# =========================
+# PERSISTENT DATABASE PATH
+# =========================
+
+DB_PATH = config.DATABASE_PATH
+
+
+# اطمینان از وجود پوشه
+os.makedirs(
+    os.path.dirname(DB_PATH),
+    exist_ok=True,
+)
+
+
+db = sqlite3.connect(
+    DB_PATH,
+    check_same_thread=False,
+)
+
 cursor = db.cursor()
 
 # ================= USERS =================

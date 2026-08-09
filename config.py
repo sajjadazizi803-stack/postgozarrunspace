@@ -11,7 +11,15 @@ API_ID = int(os.getenv("API_ID"))
 
 API_HASH = os.getenv("API_HASH")
 
-SESSION_FOLDER = "sessions"
+# =========================
+# RAILWAY PERSISTENT STORAGE
+# =========================
+
+RAILWAY_DATA_PATH = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/data")
+
+SESSION_FOLDER = os.path.join(RAILWAY_DATA_PATH, "sessions")
+
+DATABASE_PATH = os.path.join(RAILWAY_DATA_PATH, "database.db")
 
 SUPPORT = "support"
 
