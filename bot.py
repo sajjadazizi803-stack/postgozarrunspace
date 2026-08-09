@@ -29,6 +29,8 @@ from handlers.connect_account import (
     receive_source_channel,
     receive_target_channel,
     finish_transfer,
+    start_group_registration,
+    receive_group,
 )
 
 from handlers.connect_account import (
@@ -563,6 +565,19 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # =========================
+    # دریافت گروه
+    # =========================
+
+    if state == State.GROUP:
+
+        await receive_group(
+            update,
+            context,
+        )
+
+        raise ApplicationHandlerStop
+
+    # =========================
     # دریافت کانال مبدا
     # =========================
 
@@ -743,6 +758,15 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if text == "👥 گروه":
+
+        context.user_data["transfer_menu"] = "GROUP"
+
+        context.user_data["state"] = State.NONE
+
+        await start_group_registration(
+            update,
+            context,
+        )
 
         return
 

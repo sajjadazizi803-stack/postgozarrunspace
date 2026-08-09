@@ -61,6 +61,34 @@ if "account_type" not in columns:
     cursor.execute("ALTER TABLE transfers ADD COLUMN account_type TEXT DEFAULT 'bot'")
     db.commit()
 
+
+# ================= GROUPS =================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS registered_groups(
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    user_id INTEGER NOT NULL,
+
+    group_id INTEGER NOT NULL,
+
+    access_hash INTEGER,
+
+    title TEXT,
+
+    username TEXT,
+
+    group_link TEXT,
+
+    enabled INTEGER DEFAULT 1,
+
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+db.commit()
+
 # ================= add Transfers =================
 
 
@@ -527,3 +555,66 @@ def save_session(user_id, session):
 
     conn.commit()
     conn.close()
+
+
+# ================= GROUP FUNCTIONS =================
+
+
+def add_registered_group(
+    user_id,
+    group_id,
+    access_hash,
+    title,
+    username,
+    group_link,
+):
+
+    cursor.execute(
+        """
+        INSERT INTO registered_groups
+        (
+            user_id,
+            group_id,
+            access_hash,
+            title,
+            username,
+            group_link
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            group_id,
+            access_hash,
+            title,
+            username,
+            group_link,
+        ),
+    )
+
+    db.commit()
+
+    return cursor.lastrowid
+
+
+def get_user_groups(user_id):
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            group_id,
+            access_hash,
+            title,
+            username,
+            group_link,
+            enabled,
+            created_at
+        FROM registered_groups
+        WHERE user_id=?
+        ORDER BY id DESC
+        """,
+        (user_id,),
+    )
+
+    return cursor.fetchall()

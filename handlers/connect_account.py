@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from conversation import State
-from database import add_transfer
+from database import add_transfer, add_registered_group
 from listener import (
     add_new_transfer,
     stop_transfer_listener,
@@ -18,6 +18,7 @@ from telethon.errors import UserNotParticipantError
 from telethon.tl import functions
 from database import update_transfer_target
 from database import get_user_transfer_count
+from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from database import (
     delete_transfer,
@@ -82,6 +83,279 @@ async def get_user_telegram_client(user_id):
         pass
 
         return None
+
+
+# =========================
+# START GROUP REGISTRATION
+# =========================
+
+
+async def start_group_registration(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    user_id = update.effective_user.id
+
+    # -----------------------------------------
+    # بررسی اتصال اکانت کاربر
+    # -----------------------------------------
+
+    user_client = await get_user_telegram_client(user_id)
+
+    if not user_client:
+
+        await update.message.reply_text(
+            """❌ برای استفاده از بخش گروه، ابتدا باید اکانت خودتان را به ربات وصل کنید.
+
+از بخش «📲 اتصال اکانت» اکانت خودتان را وصل کنید و سپس دوباره وارد بخش «👥 گروه» شوید."""
+        )
+
+        context.user_data["state"] = State.NONE
+
+        return
+
+    await user_client.disconnect()
+
+    # -----------------------------------------
+    # ورود به مرحله دریافت گروه
+    # -----------------------------------------
+
+    context.user_data["state"] = State.GROUP
+
+    await update.message.reply_text(
+        """👥 <b>ثبت گروه</b>
+
+لینک یا یوزرنیم گروهی که می‌خواهید ثبت کنید را ارسال کنید.
+
+مثال گروه عمومی:
+
+<code>@example_group</code>
+
+یا:
+
+<code>https://t.me/example_group</code>
+
+برای گروه خصوصی نیز می‌توانید لینک دعوت گروه را ارسال کنید.
+
+مثال:
+
+<code>https://t.me/+XXXXXXXX</code>""",
+        parse_mode="HTML",
+    )
+
+
+# =========================
+# RECEIVE GROUP
+# =========================
+
+
+async def receive_group(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    if context.user_data.get("state") != State.GROUP:
+        return
+
+    if not update.message or not update.message.text:
+        return
+
+    user_id = update.effective_user.id
+
+    group_link = update.message.text.strip()
+
+    # -----------------------------------------
+    # دوباره بررسی اتصال اکانت
+    # -----------------------------------------
+
+    user_client = await get_user_telegram_client(user_id)
+
+    if not user_client:
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text("""❌ اتصال اکانت شما پیدا نشد.
+
+ابتدا اکانت خودتان را از بخش «📲 اتصال اکانت» وصل کنید.""")
+
+        return
+
+    try:
+
+        entity = None
+
+        # -----------------------------------------
+        # لینک دعوت خصوصی
+        # -----------------------------------------
+
+        if "t.me/+" in group_link:
+
+            invite_hash = (
+                group_link.split(
+                    "t.me/+",
+                    1,
+                )[1]
+                .split(
+                    "?",
+                    1,
+                )[0]
+                .strip("/")
+            )
+
+            result = await user_client(ImportChatInviteRequest(invite_hash))
+
+            if getattr(result, "chats", None):
+
+                entity = result.chats[0]
+
+        # -----------------------------------------
+        # لینک دعوت قدیمی
+        # -----------------------------------------
+
+        elif "t.me/joinchat/" in group_link:
+
+            invite_hash = (
+                group_link.split(
+                    "t.me/joinchat/",
+                    1,
+                )[1]
+                .split(
+                    "?",
+                    1,
+                )[0]
+                .strip("/")
+            )
+
+            result = await user_client(ImportChatInviteRequest(invite_hash))
+
+            if getattr(result, "chats", None):
+
+                entity = result.chats[0]
+
+        # -----------------------------------------
+        # گروه عمومی
+        # -----------------------------------------
+
+        else:
+
+            entity = await user_client.get_entity(group_link)
+
+            try:
+
+                await user_client(JoinChannelRequest(entity))
+
+            except UserAlreadyParticipantError:
+
+                pass
+
+        # -----------------------------------------
+        # بررسی اینکه واقعاً گروه باشد
+        # -----------------------------------------
+
+        if entity is None:
+
+            raise RuntimeError("GROUP_NOT_FOUND")
+
+        # Telegram supergroup معمولاً Channel
+        # با megagroup=True است
+
+        if not getattr(
+            entity,
+            "megagroup",
+            False,
+        ):
+
+            await user_client.disconnect()
+
+            await update.message.reply_text(
+                """❌ لینکی که فرستادید مربوط به یک گروه نیست.
+
+لطفاً لینک یا یوزرنیم یک گروه تلگرامی ارسال کنید."""
+            )
+
+            return
+
+        # -----------------------------------------
+        # اطلاعات گروه
+        # -----------------------------------------
+
+        group_id = entity.id
+
+        access_hash = getattr(
+            entity,
+            "access_hash",
+            None,
+        )
+
+        title = getattr(
+            entity,
+            "title",
+            "بدون نام",
+        )
+
+        username = getattr(
+            entity,
+            "username",
+            None,
+        )
+
+        # -----------------------------------------
+        # ذخیره گروه
+        # -----------------------------------------
+
+        add_registered_group(
+            user_id=user_id,
+            group_id=group_id,
+            access_hash=access_hash,
+            title=title,
+            username=username,
+            group_link=group_link,
+        )
+
+        await user_client.disconnect()
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text(
+            f"""✅ <b>گروه با موفقیت ثبت شد.</b>
+
+👥 <b>گروه:</b> {title}
+
+📌 <b>لینک:</b> {group_link}
+
+برای ادامه و تنظیم پیام و زمان‌بندی ارسال، بعداً از بخش:
+
+📋 <b>انتقال‌های ثبت شده</b>
+
+گروه خودتان را مدیریت کنید.""",
+            parse_mode="HTML",
+        )
+
+        return
+
+    except Exception as e:
+
+        print(
+            "[GROUP REGISTRATION ERROR]",
+            e,
+        )
+
+        try:
+
+            await user_client.disconnect()
+
+        except Exception:
+
+            pass
+
+        await update.message.reply_text(
+            """❌ ثبت گروه انجام نشد.
+
+مطمئن شوید لینکی که فرستادید مربوط به یک گروه تلگرامی معتبر است و اکانت متصل شما به آن گروه دسترسی دارد."""
+        )
+
+        return
 
 
 # =========================
