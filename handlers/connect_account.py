@@ -24,6 +24,7 @@ from database import (
     delete_transfer,
     set_transfer_enabled,
     get_user_transfers,
+    get_user_groups,
     get_remove_last_lines,
     set_append_last_lines,
     get_append_last_lines,
@@ -124,23 +125,8 @@ async def start_group_registration(
     context.user_data["state"] = State.GROUP
 
     await update.message.reply_text(
-        """👥 <b>ثبت گروه</b>
-
-لینک یا یوزرنیم گروهی که می‌خواهید ثبت کنید را ارسال کنید.
-
-مثال گروه عمومی:
-
-<code>@example_group</code>
-
-یا:
-
-<code>https://t.me/example_group</code>
-
-برای گروه خصوصی نیز می‌توانید لینک دعوت گروه را ارسال کنید.
-
-مثال:
-
-<code>https://t.me/+XXXXXXXX</code>""",
+        """
+لینک یا یوزرنیم گروهی که می‌خواهید ثبت کنید را ارسال کنید.""",
         parse_mode="HTML",
     )
 
@@ -321,14 +307,11 @@ async def receive_group(
             f"""✅ <b>گروه با موفقیت ثبت شد.</b>
 
 👥 <b>گروه:</b> {title}
-
 📌 <b>لینک:</b> {group_link}
 
-برای ادامه و تنظیم پیام و زمان‌بندی ارسال، بعداً از بخش:
+برای ادامه و تنظیم پیام و زمان‌بندی ارسال، بعداً از بخش: 📋 <b>انتقال‌های ثبت شده</b>
 
-📋 <b>انتقال‌های ثبت شده</b>
-
-گروه خودتان را مدیریت کنید.""",
+گروه خود را مدیریت کنید.""",
             parse_mode="HTML",
         )
 
@@ -1054,14 +1037,62 @@ async def receive_target_channel(
 # -------------------- registered channels --------------------
 
 
-async def registered_channels(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def registered_channels(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
 
-    user_id = update.effective_user.id
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📢 کانال",
+                callback_data="registered_channel",
+            ),
+            InlineKeyboardButton(
+                "👥 گروه",
+                callback_data="registered_group",
+            ),
+        ],
+    ]
 
-    transfers = get_user_transfers(user_id)
+    await update.message.reply_text(
+        """📋 <b>انتقال‌های ثبت شده</b>
+
+لطفاً نوع موردی که می‌خواهید مدیریت کنید را انتخاب کنید:""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# -------------------- registered channels list --------------------
+
+
+async def registered_channels_list(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfers = get_user_transfers(query.from_user.id)
 
     if not transfers:
-        await update.message.reply_text("❌ هنوز هیچ انتقالی ثبت نکرده‌اید.")
+
+        await query.edit_message_text(
+            """❌ هنوز هیچ کانالی ثبت نکرده‌اید.""",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🔙 بازگشت",
+                            callback_data="registered_back",
+                        )
+                    ]
+                ]
+            ),
+        )
+
         return
 
     keyboard = []
@@ -1075,17 +1106,206 @@ async def registered_channels(update: Update, context: ContextTypes.DEFAULT_TYPE
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    f"{source} ➜ {target}", callback_data=f"transfer_{transfer_id}"
+                    f"{source} ➜ {target}",
+                    callback_data=f"transfer_{transfer_id}",
                 )
             ]
         )
 
-    await update.message.reply_text(
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_back",
+            )
+        ]
+    )
+
+    await query.edit_message_text(
         """<b>📋 کانال‌های ثبت‌شده شما</b>
 
 🎯 تمام اتصال‌های فعال شما در این بخش نمایش داده می‌شوند.
 
 👇 برای مشاهده اطلاعات هر اتصال، کافی است روی دکمه <b>کانال مبدا ➜ مقصد</b> موردنظر بزنید.""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# -------------------- registered groups list --------------------
+
+
+async def registered_groups_list(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+    await query.answer()
+
+    groups = get_user_groups(query.from_user.id)
+
+    if not groups:
+
+        await query.edit_message_text(
+            """❌ هنوز هیچ گروهی ثبت نکرده‌اید.""",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🔙 بازگشت",
+                            callback_data="registered_back",
+                        )
+                    ]
+                ]
+            ),
+        )
+
+        return
+
+    keyboard = []
+
+    for group in groups:
+
+        group_db_id = group[0]
+        title = group[3]
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"👥 {title}",
+                    callback_data=f"registered_group_{group_db_id}",
+                )
+            ]
+        )
+
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_back",
+            )
+        ]
+    )
+
+    await query.edit_message_text(
+        """<b>📋 گروه‌های ثبت‌شده شما</b>
+
+🎯 تمام گروه‌هایی که برای ارسال زمان‌بندی‌شده ثبت کرده‌اید در این بخش نمایش داده می‌شوند.
+
+👇 برای مشاهده اطلاعات هر گروه، روی گروه موردنظر بزنید.""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# -------------------- registered group info --------------------
+
+
+async def registered_group_info(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+    await query.answer()
+
+    group_db_id = int(query.data.split("_")[-1])
+
+    groups = get_user_groups(query.from_user.id)
+
+    group = None
+
+    for item in groups:
+
+        if item[0] == group_db_id:
+
+            group = item
+            break
+
+    if group is None:
+
+        await query.edit_message_text("❌ گروه پیدا نشد.")
+
+        return
+
+    # ساختار tuple:
+    #
+    # 0 = id
+    # 1 = group_id
+    # 2 = access_hash
+    # 3 = title
+    # 4 = username
+    # 5 = group_link
+    # 6 = enabled
+    # 7 = created_at
+
+    title = group[3]
+    username = group[4]
+    group_id = group[1]
+    enabled = bool(group[6])
+
+    username_text = f"@{username}" if username else "ندارد"
+
+    status = "🟢 فعال" if enabled else "🔴 متوقف"
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📝 پیام / بنر",
+                callback_data=f"group_message_{group_db_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_group",
+            )
+        ],
+    ]
+
+    await query.edit_message_text(
+        f"""📢 <b>اطلاعات گروه</b>
+
+👥 <b>گروه:</b> {title}
+🔗 <b>یوزرنیم:</b> {username_text}
+🆔 <b>شناسه:</b> {group_id}
+⏱ <b>فاصله ارسال:</b> نامشخص
+
+📊 <b>وضعیت:</b> {status}""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+# -------------------- registered back menu --------------------
+
+
+async def registered_back_menu(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📢 کانال",
+                callback_data="registered_channel",
+            ),
+            InlineKeyboardButton(
+                "👥 گروه",
+                callback_data="registered_group",
+            ),
+        ],
+    ]
+
+    await query.edit_message_text(
+        """📋 <b>انتقال‌های ثبت شده</b>
+
+لطفاً نوع موردی که می‌خواهید مدیریت کنید را انتخاب کنید:""",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )

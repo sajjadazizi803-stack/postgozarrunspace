@@ -37,6 +37,10 @@ from handlers.connect_account import (
     delete_transfer_callback,
     toggle_transfer_callback,
     back_to_registered_channels,
+    registered_channels_list,
+    registered_groups_list,
+    registered_group_info,
+    registered_back_menu,
     transfer_settings,
     remove_lines_setting,
 )
@@ -1283,6 +1287,35 @@ def create_bot():
             back_to_registered_channels, pattern=r"^registered_channels$"
         )
     )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            registered_channels_list,
+            pattern=r"^registered_channel$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            registered_groups_list,
+            pattern=r"^registered_group$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            registered_group_info,
+            pattern=r"^registered_group_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            registered_back_menu,
+            pattern=r"^registered_back$",
+        )
+    )
+
     app.add_handler(CallbackQueryHandler(transfer_settings, pattern=r"^settings_\d+$"))
     app.add_handler(
         CallbackQueryHandler(remove_lines_setting, pattern=r"^remove_lines_\d+$")
