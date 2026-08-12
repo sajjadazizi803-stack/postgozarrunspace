@@ -851,3 +851,26 @@ def set_group_schedule(
     )
 
     db.commit()
+
+
+def set_group_enabled(
+    registered_group_id,
+    user_id,
+    enabled,
+):
+
+    cursor.execute(
+        """
+        UPDATE registered_groups
+        SET enabled=?
+        WHERE id=?
+        AND user_id=?
+        """,
+        (
+            1 if enabled else 0,
+            registered_group_id,
+            user_id,
+        ),
+    )
+
+    db.commit()

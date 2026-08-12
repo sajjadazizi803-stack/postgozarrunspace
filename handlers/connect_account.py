@@ -25,6 +25,7 @@ from telethon.tl import functions
 from database import update_transfer_target
 from database import get_user_transfer_count
 from telethon.tl.functions.messages import ImportChatInviteRequest
+from telethon.tl.types import InputPeerChannel
 
 from database import (
     delete_transfer,
@@ -41,6 +42,7 @@ from database import (
     get_group_message,
     set_group_schedule,
     delete_registered_group,
+    set_group_enabled,
 )
 
 from telethon import TelegramClient
@@ -1408,6 +1410,12 @@ async def registered_group_info(
         ],
         [
             InlineKeyboardButton(
+                "▶️ شروع تبلیغات",
+                callback_data=f"start_group_ads_{group_db_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 بازگشت",
                 callback_data="registered_group",
             )
@@ -1489,6 +1497,7 @@ async def delete_group_callback(
         f"""⚠️ <b>حذف گروه</b>
 
 آیا مطمئن هستید که می‌خواهید گروه:
+
 👥 <b>{title}</b>
 
 را حذف کنید؟
@@ -1945,6 +1954,16 @@ async def receive_group_message(
             InlineKeyboardButton(
                 "⏱ زمان‌بندی",
                 callback_data=f"group_schedule_{group_db_id}",
+            ),
+            InlineKeyboardButton(
+                "🗑 حذف گروه",
+                callback_data=f"delete_group_{group_db_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "▶️ شروع تبلیغات",
+                callback_data=f"start_group_ads_{group_db_id}",
             )
         ],
         [
@@ -2045,6 +2064,277 @@ async def group_schedule_callback(
 ⚠️ کمتر از ۱ دقیقه قابل قبول نیست.""",
         parse_mode="HTML",
     )
+
+
+# -------------------- start group ads callback --------------------
+
+
+async def start_group_ads_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    group_db_id = int(query.data.split("_")[-1])
+
+    user_id = query.from_user.id
+
+    # ==========================================
+    # بررسی گروه
+    # ==========================================
+
+    groups = get_user_groups(user_id)
+
+    group = None
+
+    for item in groups:
+
+        if item[0] == group_db_id:
+
+            group = item
+
+            break
+
+    if group is None:
+
+        await query.answer(
+            "❌ گروه پیدا نشد.",
+            show_alert=True,
+        )
+
+        return
+
+    # ==========================================
+    # بررسی پیام / بنر
+    # ==========================================
+
+    group_message = get_group_message(
+        group_db_id,
+        user_id,
+    )
+
+    if not group_message:
+
+        await query.answer(
+            "❌ ابتدا پیام یا بنر خود را ثبت کنید.",
+            show_alert=True,
+        )
+
+        return
+
+    # ==========================================
+    # بررسی زمان‌بندی
+    # ==========================================
+
+    schedule_minutes = group_message[9]
+
+    if not schedule_minutes:
+
+        await query.answer(
+            "❌ ابتدا زمان‌بندی ارسال را مشخص کنید.",
+            show_alert=True,
+        )
+
+        return
+
+    # ==========================================
+    # اتصال اکانت کاربر
+    # ==========================================
+
+    user_client = await get_user_telegram_client(user_id)
+
+    if not user_client:
+
+        await query.answer(
+            "❌ اتصال اکانت شما پیدا نشد.",
+            show_alert=True,
+        )
+
+        return
+
+    try:
+
+        group_id = group[1]
+
+        access_hash = group[2]
+
+        title = group[3]
+
+        # ======================================
+        # گرفتن Entity گروه
+        # ======================================
+
+        try:
+
+            entity = await user_client.get_entity(group_id)
+
+        except Exception:
+
+            if access_hash:
+
+                entity = await user_client.get_entity(
+                    InputPeerChannel(
+                        group_id,
+                        access_hash,
+                    )
+                )
+
+            else:
+
+                raise
+
+        # ======================================
+        # اطلاعات پیام ذخیره‌شده
+        # ======================================
+
+        message_type = group_message[3]
+
+        message_text = group_message[4]
+
+        caption = group_message[5]
+
+        file_path = group_message[6]
+
+        forward_chat_id = group_message[7]
+
+        forward_message_id = group_message[8]
+
+        # ======================================
+        # ارسال پیام
+        # ======================================
+
+        if message_type == "text":
+
+            await user_client.send_message(
+                entity,
+                message_text,
+            )
+
+        elif message_type == "forward":
+
+            if not forward_chat_id or not forward_message_id:
+
+                raise RuntimeError("FORWARD_INFO_NOT_FOUND")
+
+            source_entity = await user_client.get_entity(forward_chat_id)
+
+            await user_client.forward_messages(
+                entity,
+                forward_message_id,
+                from_peer=source_entity,
+            )
+
+        elif file_path:
+
+            send_kwargs = {}
+
+            if caption:
+
+                send_kwargs["caption"] = caption
+
+            await user_client.send_file(
+                entity,
+                file_path,
+                **send_kwargs,
+            )
+
+        else:
+
+            raise RuntimeError("MESSAGE_DATA_NOT_FOUND")
+
+        # ======================================
+        # فعال کردن گروه
+        # ======================================
+
+        set_group_enabled(
+            registered_group_id=group_db_id,
+            user_id=user_id,
+            enabled=True,
+        )
+
+        # ======================================
+        # پایان
+        # ======================================
+
+        await query.answer(
+            "✅ تبلیغات با موفقیت شروع شد.",
+            show_alert=True,
+        )
+
+        # صفحه اطلاعات گروه را دوباره نمایش بده
+
+        username = group[4]
+
+        username_text = f"@{username}" if username else "ندارد"
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "📝 پیام / بنر",
+                    callback_data=(f"group_message_{group_db_id}"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⏱ زمان‌بندی",
+                    callback_data=(f"group_schedule_{group_db_id}"),
+                ),
+                InlineKeyboardButton(
+                    "🗑 حذف گروه",
+                    callback_data=(f"delete_group_{group_db_id}"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "▶️ شروع تبلیغات",
+                    callback_data=(f"start_group_ads_{group_db_id}"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔙 بازگشت",
+                    callback_data="registered_group",
+                )
+            ],
+        ]
+
+        await query.edit_message_text(
+            f"""📢 <b>اطلاعات گروه</b>
+
+👥 <b>گروه:</b> {title}
+🔗 <b>یوزرنیم:</b> {username_text}
+🆔 <b>شناسه:</b> {group_id}
+⏱ <b>فاصله ارسال:</b> {schedule_minutes} دقیقه
+
+📊 <b>وضعیت:</b> 🟢 فعال""",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+    except Exception as e:
+
+        print(
+            "[START GROUP ADS ERROR]",
+            e,
+        )
+
+        await query.answer(
+            "❌ ارسال پیام به گروه انجام نشد.",
+            show_alert=True,
+        )
+
+    finally:
+
+        try:
+
+            await user_client.disconnect()
+
+        except Exception:
+
+            pass
 
 
 # -------------------- registered back menu --------------------

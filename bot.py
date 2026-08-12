@@ -37,6 +37,7 @@ from handlers.connect_account import (
     delete_group_callback,
     confirm_delete_group_callback,
     cancel_delete_group_callback,
+    start_group_ads_callback,
 )
 
 from handlers.connect_account import (
@@ -1488,6 +1489,13 @@ def create_bot():
         CallbackQueryHandler(
             group_schedule_callback,
             pattern=r"^group_schedule_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            start_group_ads_callback,
+            pattern=r"^start_group_ads_\d+$",
         )
     )
 
