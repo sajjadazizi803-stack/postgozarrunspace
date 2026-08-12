@@ -1385,19 +1385,7 @@ async def registered_groups_list(
 
     if not groups:
 
-        await query.edit_message_text(
-            """❌ هنوز هیچ گروهی ثبت نکرده‌اید.""",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "🔙 بازگشت",
-                            callback_data="registered_back",
-                        )
-                    ]
-                ]
-            ),
-        )
+        await query.edit_message_text("""❌ هنوز هیچ گروهی ثبت نکرده‌اید.""")
 
         return
 
@@ -1416,15 +1404,6 @@ async def registered_groups_list(
                 )
             ]
         )
-
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                "🔙 بازگشت",
-                callback_data="registered_back",
-            )
-        ]
-    )
 
     await query.edit_message_text(
         """<b>📋 گروه‌های ثبت‌شده شما</b>
