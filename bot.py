@@ -530,10 +530,19 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None:
         return
 
-    if update.message.text is None:
-        return
-
     user_data = context.user_data
+
+    # ==========================================
+    # اگر پیام متنی نیست، فقط برای دکمه‌های متنی
+    # چیزی انجام نده
+    # ==========================================
+
+    if update.message.text is None:
+
+        if user_data.get("state") == State.GROUP_MESSAGE:
+            return
+
+        return
 
     text = update.message.text.strip()
 
