@@ -1471,10 +1471,7 @@ async def delete_group_callback(
 
     if group is None:
 
-        await query.answer(
-            "❌ گروه پیدا نشد.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ گروه پیدا نشد.")
 
         return
 
@@ -1539,10 +1536,7 @@ async def confirm_delete_group_callback(
 
     if not group_exists:
 
-        await query.answer(
-            "❌ گروه پیدا نشد.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ گروه پیدا نشد.")
 
         return
 
@@ -2039,10 +2033,7 @@ async def group_schedule_callback(
 
     if not group_message:
 
-        await query.answer(
-            "❌ ابتدا پیام یا بنر را ثبت کنید.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ ابتدا پیام یا بنر را ثبت کنید.")
 
         return
 
@@ -2100,10 +2091,7 @@ async def start_group_ads_callback(
 
     if group is None:
 
-        await query.answer(
-            "❌ گروه پیدا نشد.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ گروه پیدا نشد.")
 
         return
 
@@ -2118,10 +2106,7 @@ async def start_group_ads_callback(
 
     if not group_message:
 
-        await query.answer(
-            "❌ ابتدا پیام یا بنر خود را ثبت کنید.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ ابتدا پیام یا بنر را ثبت کنید.")
 
         return
 
@@ -2133,10 +2118,7 @@ async def start_group_ads_callback(
 
     if not schedule_minutes:
 
-        await query.answer(
-            "❌ ابتدا زمان‌بندی ارسال را مشخص کنید.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ ابتدا زمان‌بندی ارسال را مشخص کنید.")
 
         return
 
@@ -2148,10 +2130,7 @@ async def start_group_ads_callback(
 
     if not user_client:
 
-        await query.answer(
-            "❌ اتصال اکانت شما پیدا نشد.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ اتصال اکانت شما پیدا نشد.")
 
         return
 
@@ -2259,10 +2238,7 @@ async def start_group_ads_callback(
         # پایان
         # ======================================
 
-        await query.answer(
-            "✅ تبلیغات با موفقیت شروع شد.",
-            show_alert=True,
-        )
+        await query.message.reply_text("✅ تبلیغات با موفقیت شروع شد.")
 
         # صفحه اطلاعات گروه را دوباره نمایش بده
 
@@ -2321,10 +2297,7 @@ async def start_group_ads_callback(
             e,
         )
 
-        await query.answer(
-            "❌ ارسال پیام به گروه انجام نشد.",
-            show_alert=True,
-        )
+        await query.message.reply_text("❌ ارسال پیام به گروه انجام نشد.")
 
     finally:
 
