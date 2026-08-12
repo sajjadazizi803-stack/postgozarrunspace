@@ -98,6 +98,134 @@ async def get_user_telegram_client(user_id):
         return None
 
 
+# ---------------------- show group info panel -----------------
+
+
+async def show_group_info_panel(
+    context,
+    chat_id,
+    group_db_id,
+    user_id,
+    old_message_id=None,
+):
+    """
+    پنل مدیریت گروه را در پایین چت نمایش می‌دهد.
+    پنل قبلی حذف می‌شود تا همیشه آخرین پیام باشد.
+    """
+
+    groups = get_user_groups(user_id)
+
+    group = None
+
+    for item in groups:
+        if item[0] == group_db_id:
+            group = item
+            break
+
+    if group is None:
+        return None
+
+    title = group[3]
+    username = group[4]
+    group_id = group[1]
+    enabled = bool(group[6])
+
+    username_text = f"@{username}" if username else "ندارد"
+
+    status = "🟢 فعال" if enabled else "🔴 متوقف"
+
+    # -------------------------
+    # اطلاعات پیام
+    # -------------------------
+
+    group_message = get_group_message(
+        group_db_id,
+        user_id,
+    )
+
+    if group_message:
+        schedule_minutes = group_message[9]
+
+        if schedule_minutes:
+            schedule_text = f"{schedule_minutes} دقیقه"
+        else:
+            schedule_text = "نامشخص"
+    else:
+        schedule_text = "نامشخص"
+
+    # -------------------------
+    # حذف پنل قبلی
+    # -------------------------
+
+    if old_message_id:
+
+        try:
+            await context.bot.delete_message(
+                chat_id=chat_id,
+                message_id=old_message_id,
+            )
+        except Exception:
+            pass
+
+    # -------------------------
+    # دکمه‌ها
+    # -------------------------
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📝 پیام / بنر",
+                callback_data=f"group_message_{group_db_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "⏱ زمان‌بندی",
+                callback_data=f"group_schedule_{group_db_id}",
+            ),
+            InlineKeyboardButton(
+                "🗑 حذف گروه",
+                callback_data=f"delete_group_{group_db_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "⏹ توقف تبلیغات" if enabled else "▶️ شروع تبلیغات",
+                callback_data=f"start_group_ads_{group_db_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_group",
+            )
+        ],
+    ]
+
+    # -------------------------
+    # ارسال پنل جدید
+    # -------------------------
+
+    message = await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"""📢 <b>اطلاعات گروه</b>
+
+👥 <b>گروه:</b> {title}
+🔗 <b>یوزرنیم:</b> {username_text}
+🆔 <b>شناسه:</b> {group_id}
+⏱ <b>فاصله ارسال:</b> {schedule_text}
+
+📊 <b>وضعیت:</b> {status}""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+    # شناسه پنل جدید
+    context.user_data["group_info_message_id"] = message.message_id
+
+    return message
+
+
 # =========================
 # START GROUP REGISTRATION
 # =========================
@@ -1318,6 +1446,7 @@ async def registered_group_info(
 ):
 
     query = update.callback_query
+
     await query.answer()
 
     group_db_id = int(query.data.split("_")[-1])
@@ -1326,118 +1455,35 @@ async def registered_group_info(
 
     groups = get_user_groups(user_id)
 
-    group = None
+    group_exists = False
 
-    for item in groups:
+    for group in groups:
 
-        if item[0] == group_db_id:
+        if group[0] == group_db_id:
 
-            group = item
+            group_exists = True
 
             break
 
-    if group is None:
+    if not group_exists:
 
-        await query.edit_message_text("❌ گروه پیدا نشد.")
+        await query.message.reply_text("❌ گروه پیدا نشد.")
 
         return
 
-    # ==========================================
-    # اطلاعات گروه
-    # ==========================================
+    # پنل فعلی را به عنوان پنل مدیریت ذخیره کن
+    context.user_data["group_info_message_id"] = query.message.message_id
 
-    title = group[3]
-
-    username = group[4]
-
-    group_id = group[1]
-
-    enabled = bool(group[6])
-
-    username_text = f"@{username}" if username else "ندارد"
-
-    status = "🟢 فعال" if enabled else "🔴 متوقف"
-
-    # ==========================================
-    # اطلاعات پیام / بنر
-    # ==========================================
-
-    group_message = get_group_message(
-        group_db_id,
-        user_id,
+    # پنل جدید را پایین چت بساز
+    await show_group_info_panel(
+        context=context,
+        chat_id=query.message.chat_id,
+        group_db_id=group_db_id,
+        user_id=user_id,
+        old_message_id=query.message.message_id,
     )
 
-    # ==========================================
-    # فاصله ارسال
-    # ==========================================
-
-    if group_message:
-
-        schedule_minutes = group_message[9]
-
-        if schedule_minutes:
-
-            schedule_text = f"{schedule_minutes} دقیقه"
-
-        else:
-
-            schedule_text = "نامشخص"
-
-    else:
-
-        schedule_text = "نامشخص"
-
-    # ==========================================
-    # دکمه‌ها
-    # ==========================================
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "📝 پیام / بنر",
-                callback_data=f"group_message_{group_db_id}",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "⏱ زمان‌بندی",
-                callback_data=f"group_schedule_{group_db_id}",
-            ),
-            InlineKeyboardButton(
-                "🗑 حذف گروه",
-                callback_data=f"delete_group_{group_db_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "⏹ توقف تبلیغات" if enabled else "▶️ شروع تبلیغات",
-                callback_data=f"start_group_ads_{group_db_id}",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 بازگشت",
-                callback_data="registered_group",
-            )
-        ],
-    ]
-
-    # ==========================================
-    # نمایش اطلاعات گروه
-    # ==========================================
-
-    await query.edit_message_text(
-        f"""📢 <b>اطلاعات گروه</b>
-
-👥 <b>گروه:</b> {title}
-🔗 <b>یوزرنیم:</b> {username_text}
-🆔 <b>شناسه:</b> {group_id}
-⏱ <b>فاصله ارسال:</b> {schedule_text}
-
-📊 <b>وضعیت:</b> {status}""",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="HTML",
-    )
+    return
 
 
 # ------------------------ delete group callback ------------------
@@ -1695,7 +1741,7 @@ async def group_message_callback(
 
     context.user_data["state"] = State.GROUP_MESSAGE
 
-    await query.message.reply_text(
+    prompt = await query.message.reply_text(
         """📩 <b>پیام یا بنری که می‌خواهید در گروه ارسال شود را همینجا بفرستید.</b>
 
 هر نوع پیامی که ارسال کنید برای این گروه ذخیره می‌شود.
@@ -1710,6 +1756,8 @@ async def group_message_callback(
 اگر پیام را به صورت فوروارد ارسال کنید، در صورت امکان همان حالت فوروارد برای ارسال بعدی حفظ می‌شود.""",
         parse_mode="HTML",
     )
+
+    context.user_data["group_message_prompt_id"] = prompt.message_id
 
 
 # -------------------- receive group message --------------------
@@ -1933,78 +1981,51 @@ async def receive_group_message(
 
     username_text = f"@{username}" if username else "ندارد"
 
-    # ==========================================
-    # دکمه‌های جدید
-    # ==========================================
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "📝 پیام / بنر",
-                callback_data=f"group_message_{group_db_id}",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "⏱ زمان‌بندی",
-                callback_data=f"group_schedule_{group_db_id}",
-            ),
-            InlineKeyboardButton(
-                "🗑 حذف گروه",
-                callback_data=f"delete_group_{group_db_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "▶️ شروع تبلیغات",
-                callback_data=f"start_group_ads_{group_db_id}",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 بازگشت",
-                callback_data="registered_group",
-            )
-        ],
-    ]
-
     group_info_message_id = context.user_data.get("group_info_message_id")
 
-    # ==========================================
-    # ویرایش پیام اطلاعات گروه
-    # ==========================================
+    # -------------------------
+    # حذف پیام کاربر
+    # -------------------------
 
-    if group_info_message_id:
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+
+    # -------------------------
+    # حذف پیام راهنما
+    # -------------------------
+
+    prompt_id = context.user_data.pop(
+        "group_message_prompt_id",
+        None,
+    )
+
+    if prompt_id:
 
         try:
-
-            await context.bot.edit_message_text(
+            await context.bot.delete_message(
                 chat_id=update.effective_chat.id,
-                message_id=group_info_message_id,
-                text=f"""📢 <b>اطلاعات گروه</b>
-
-👥 <b>گروه:</b> {title}
-🔗 <b>یوزرنیم:</b> {username_text}
-🆔 <b>شناسه:</b> {group_id}
-⏱ <b>فاصله ارسال:</b> نامشخص
-
-📊 <b>وضعیت:</b> 🔴 متوقف""",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode="HTML",
+                message_id=prompt_id,
             )
+        except Exception:
+            pass
 
-        except Exception as e:
+    # -------------------------
+    # انتقال پنل به پایین چت
+    # -------------------------
 
-            print(
-                "[GROUP INFO EDIT ERROR]",
-                e,
-            )
+    old_panel_id = context.user_data.pop(
+        "group_info_message_id",
+        None,
+    )
 
-    await update.message.reply_text(
-        """✅ <b>پیام / بنر با موفقیت ذخیره شد.</b>
-
-حالا می‌توانید از دکمه «⏱ زمان‌بندی» فاصله ارسال را به دقیقه تعیین کنید.""",
-        parse_mode="HTML",
+    await show_group_info_panel(
+        context=context,
+        chat_id=update.effective_chat.id,
+        group_db_id=group_db_id,
+        user_id=user_id,
+        old_message_id=old_panel_id,
     )
 
     return
@@ -2041,12 +2062,13 @@ async def group_schedule_callback(
 
     context.user_data["state"] = State.GROUP_SCHEDULE
 
-    await query.message.reply_text(
+    prompt = await query.message.reply_text(
         """⏱ <b>زمان‌بندی ارسال</b>
 
 پیام یا بنرتان را هر چند دقیقه یک‌بار می‌خواهید در گروه ارسال کنم؟
 
 🔢 فقط عدد را بر اساس دقیقه ارسال کنید.
+
 مثال:
 1️⃣ <code>1</code> → هر ۱ دقیقه
 2️⃣ <code>20</code> → هر ۲۰ دقیقه
@@ -2055,6 +2077,8 @@ async def group_schedule_callback(
 ⚠️ کمتر از ۱ دقیقه قابل قبول نیست.""",
         parse_mode="HTML",
     )
+
+    context.user_data["group_schedule_prompt_id"] = prompt.message_id
 
 
 # -------------------- start group ads callback --------------------
@@ -2113,81 +2137,20 @@ async def start_group_ads_callback(
             enabled=False,
         )
 
-        title = group[3]
+        old_panel_id = query.message.message_id
 
-        username = group[4]
-
-        group_id = group[1]
-
-        username_text = f"@{username}" if username else "ندارد"
-
-        group_message = get_group_message(
-            group_db_id,
-            user_id,
-        )
-
-        if group_message:
-
-            schedule_minutes = group_message[9]
-
-            schedule_text = (
-                f"{schedule_minutes} دقیقه" if schedule_minutes else "نامشخص"
-            )
-
-        else:
-
-            schedule_text = "نامشخص"
-
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "📝 پیام / بنر",
-                    callback_data=(f"group_message_{group_db_id}"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "⏱ زمان‌بندی",
-                    callback_data=(f"group_schedule_{group_db_id}"),
-                ),
-                InlineKeyboardButton(
-                    "🗑 حذف گروه",
-                    callback_data=(f"delete_group_{group_db_id}"),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    "▶️ شروع تبلیغات",
-                    callback_data=(f"start_group_ads_{group_db_id}"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🔙 بازگشت",
-                    callback_data="registered_group",
-                )
-            ],
-        ]
-
-        await query.message.reply_text("⏹ تبلیغات گروه متوقف شد.")
-
-        await query.edit_message_text(
-            f"""📢 <b>اطلاعات گروه</b>
-
-👥 <b>گروه:</b> {title}
-🔗 <b>یوزرنیم:</b> {username_text}
-🆔 <b>شناسه:</b> {group_id}
-⏱ <b>فاصله ارسال:</b> {schedule_text}
-
-📊 <b>وضعیت:</b> 🔴 متوقف""",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML",
+        await show_group_info_panel(
+            context=context,
+            chat_id=query.message.chat_id,
+            group_db_id=group_db_id,
+            user_id=user_id,
+            old_message_id=old_panel_id,
         )
 
         return
 
     # ==========================================
-    # تبلیغات متوقف است → شروع
+    # تبلیغات متوقف است → بررسی پیام
     # ==========================================
 
     group_message = get_group_message(
@@ -2221,7 +2184,9 @@ async def start_group_ads_callback(
 
     if not user_client:
 
-        await query.message.reply_text("❌ اتصال اکانت شما پیدا نشد.")
+        await query.message.reply_text("""❌ اتصال اکانت شما پیدا نشد.
+
+ابتدا اکانت خودتان را از بخش «📲 اتصال اکانت» وصل کنید.""")
 
         return
 
@@ -2230,12 +2195,6 @@ async def start_group_ads_callback(
         group_id = group[1]
 
         access_hash = group[2]
-
-        title = group[3]
-
-        username = group[4]
-
-        username_text = f"@{username}" if username else "ندارد"
 
         # ======================================
         # گرفتن Entity گروه
@@ -2261,7 +2220,7 @@ async def start_group_ads_callback(
                 raise
 
         # ======================================
-        # اطلاعات پیام
+        # اطلاعات پیام ذخیره‌شده
         # ======================================
 
         message_type = group_message[3]
@@ -2330,58 +2289,20 @@ async def start_group_ads_callback(
         )
 
         # ======================================
-        # پیام موفقیت
+        # انتقال پنل به پایین چت
         # ======================================
 
-        await query.message.reply_text("✅ تبلیغات با موفقیت شروع شد.")
+        old_panel_id = query.message.message_id
 
-        # ======================================
-        # صفحه اطلاعات گروه
-        # ======================================
-
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "📝 پیام / بنر",
-                    callback_data=(f"group_message_{group_db_id}"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "⏱ زمان‌بندی",
-                    callback_data=(f"group_schedule_{group_db_id}"),
-                ),
-                InlineKeyboardButton(
-                    "🗑 حذف گروه",
-                    callback_data=(f"delete_group_{group_db_id}"),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    "⏹ توقف تبلیغات",
-                    callback_data=(f"start_group_ads_{group_db_id}"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🔙 بازگشت",
-                    callback_data="registered_group",
-                )
-            ],
-        ]
-
-        await query.edit_message_text(
-            f"""📢 <b>اطلاعات گروه</b>
-
-👥 <b>گروه:</b> {title}
-🔗 <b>یوزرنیم:</b> {username_text}
-🆔 <b>شناسه:</b> {group_id}
-⏱ <b>فاصله ارسال:</b> {schedule_minutes} دقیقه
-
-📊 <b>وضعیت:</b> 🟢 فعال""",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML",
+        await show_group_info_panel(
+            context=context,
+            chat_id=query.message.chat_id,
+            group_db_id=group_db_id,
+            user_id=user_id,
+            old_message_id=old_panel_id,
         )
+
+        return
 
     except Exception as e:
 
@@ -2391,6 +2312,8 @@ async def start_group_ads_callback(
         )
 
         await query.message.reply_text("❌ ارسال پیام به گروه انجام نشد.")
+
+        return
 
     finally:
 

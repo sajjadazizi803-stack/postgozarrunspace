@@ -1003,16 +1003,58 @@ async def conversation_router(update, context):
 
         context.user_data["state"] = State.NONE
 
-        await update.message.reply_text(
-            f"""✅ <b>زمان‌بندی ذخیره شد.</b>
+        # -----------------------------------------
+        # حذف پیام عددی کاربر
+        # -----------------------------------------
 
-⏱ فاصله ارسال:
-<b>{minutes} دقیقه</b>
+        try:
 
-از این به بعد این مقدار برای زمان‌بندی ارسال گروه ثبت شده است.""",
-            parse_mode="HTML",
+            await update.message.delete()
+
+        except Exception:
+
+            pass
+
+        # -----------------------------------------
+        # حذف پیام قبلی پنل / راهنما
+        # -----------------------------------------
+
+        old_panel_id = context.user_data.pop(
+            "group_info_message_id",
+            None,
         )
 
+        prompt_id = context.user_data.pop(
+            "group_schedule_prompt_id",
+            None,
+        )
+
+        if prompt_id:
+
+            try:
+
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=prompt_id,
+                )
+
+            except Exception:
+
+                pass
+
+        # -----------------------------------------
+        # نمایش دوباره پنل در پایین چت
+        # -----------------------------------------
+
+        from handlers.connect_account import show_group_info_panel
+
+        await show_group_info_panel(
+            context=context,
+            chat_id=update.effective_chat.id,
+            group_db_id=group_db_id,
+            user_id=update.effective_user.id,
+            old_message_id=old_panel_id,
+        )
         return
 
     user_data = context.user_data or {}
