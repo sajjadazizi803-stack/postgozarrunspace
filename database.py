@@ -672,6 +672,74 @@ def get_user_groups(user_id):
     return cursor.fetchall()
 
 
+def delete_registered_group(
+    group_db_id,
+    user_id,
+):
+    import os
+
+    # اول فایل پیام/بنر ذخیره‌شده را پیدا می‌کنیم
+    cursor.execute(
+        """
+        SELECT file_path
+        FROM group_messages
+        WHERE registered_group_id=?
+        AND user_id=?
+        """,
+        (
+            group_db_id,
+            user_id,
+        ),
+    )
+
+    result = cursor.fetchone()
+
+    file_path = result[0] if result else None
+
+    # حذف پیام/بنر ذخیره‌شده
+    cursor.execute(
+        """
+        DELETE FROM group_messages
+        WHERE registered_group_id=?
+        AND user_id=?
+        """,
+        (
+            group_db_id,
+            user_id,
+        ),
+    )
+
+    # حذف خود گروه
+    cursor.execute(
+        """
+        DELETE FROM registered_groups
+        WHERE id=?
+        AND user_id=?
+        """,
+        (
+            group_db_id,
+            user_id,
+        ),
+    )
+
+    db.commit()
+
+    # اگر فایل رسانه‌ای ذخیره شده بود، آن را هم حذف کن
+    if file_path:
+
+        try:
+
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+        except Exception as e:
+
+            print(
+                "[GROUP FILE DELETE ERROR]",
+                e,
+            )
+
+
 # ================= GROUP MESSAGE FUNCTIONS =================
 
 

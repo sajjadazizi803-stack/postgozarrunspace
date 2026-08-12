@@ -40,6 +40,7 @@ from database import (
     save_group_message,
     get_group_message,
     set_group_schedule,
+    delete_registered_group,
 )
 
 from telethon import TelegramClient
@@ -1364,26 +1365,11 @@ async def registered_group_info(
         user_id,
     )
 
-    keyboard = []
-
     # ==========================================
-    # اگر پیام ثبت نشده
+    # فاصله ارسال
     # ==========================================
 
-    if not group_message:
-
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "📝 پیام / بنر",
-                    callback_data=f"group_message_{group_db_id}",
-                )
-            ]
-        )
-
-        schedule_text = "نامشخص"
-
-    else:
+    if group_message:
 
         schedule_minutes = group_message[9]
 
@@ -1395,40 +1381,261 @@ async def registered_group_info(
 
             schedule_text = "نامشخص"
 
-        # -------------------------------
-        # پیام / بنر
-        # -------------------------------
+    else:
 
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "📝 پیام / بنر",
-                    callback_data=f"group_message_{group_db_id}",
-                )
-            ]
-        )
+        schedule_text = "نامشخص"
 
-        # -------------------------------
-        # زمان‌بندی
-        # -------------------------------
+    # ==========================================
+    # دکمه‌ها
+    # ==========================================
 
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "⏱ زمان‌بندی",
-                    callback_data=f"group_schedule_{group_db_id}",
-                )
-            ]
-        )
-
-    keyboard.append(
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📝 پیام / بنر",
+                callback_data=f"group_message_{group_db_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "⏱ زمان‌بندی",
+                callback_data=f"group_schedule_{group_db_id}",
+            ),
+            InlineKeyboardButton(
+                "🗑 حذف گروه",
+                callback_data=f"delete_group_{group_db_id}",
+            ),
+        ],
         [
             InlineKeyboardButton(
                 "🔙 بازگشت",
                 callback_data="registered_group",
             )
-        ]
+        ],
+    ]
+
+    # ==========================================
+    # نمایش اطلاعات گروه
+    # ==========================================
+
+    await query.edit_message_text(
+        f"""📢 <b>اطلاعات گروه</b>
+
+👥 <b>گروه:</b> {title}
+🔗 <b>یوزرنیم:</b> {username_text}
+🆔 <b>شناسه:</b> {group_id}
+⏱ <b>فاصله ارسال:</b> {schedule_text}
+
+📊 <b>وضعیت:</b> {status}""",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
     )
+
+
+# ------------------------ delete group callback ------------------
+
+
+async def delete_group_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    group_db_id = int(query.data.split("_")[-1])
+
+    user_id = query.from_user.id
+
+    # بررسی اینکه گروه واقعاً متعلق به همین کاربر است
+    groups = get_user_groups(user_id)
+
+    group = None
+
+    for item in groups:
+
+        if item[0] == group_db_id:
+
+            group = item
+
+            break
+
+    if group is None:
+
+        await query.answer(
+            "❌ گروه پیدا نشد.",
+            show_alert=True,
+        )
+
+        return
+
+    title = group[3]
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "🗑 بله، حذف کن",
+                callback_data=(f"confirm_delete_group_{group_db_id}"),
+            ),
+            InlineKeyboardButton(
+                "❌ لغو",
+                callback_data=(f"cancel_delete_group_{group_db_id}"),
+            ),
+        ],
+    ]
+
+    await query.edit_message_text(
+        f"""⚠️ <b>حذف گروه</b>
+
+آیا مطمئن هستید که می‌خواهید گروه:
+👥 <b>{title}</b>
+
+را حذف کنید؟
+
+با حذف گروه، تمام اطلاعات مربوط به گروه حذف خواهند شد.""",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+# ---------------------------- confirm delete group callback --------------------
+
+
+async def confirm_delete_group_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    group_db_id = int(query.data.split("_")[-1])
+
+    user_id = query.from_user.id
+
+    # دوباره بررسی مالکیت
+    groups = get_user_groups(user_id)
+
+    group_exists = False
+
+    for group in groups:
+
+        if group[0] == group_db_id:
+
+            group_exists = True
+
+            break
+
+    if not group_exists:
+
+        await query.answer(
+            "❌ گروه پیدا نشد.",
+            show_alert=True,
+        )
+
+        return
+
+    delete_registered_group(
+        group_db_id,
+        user_id,
+    )
+
+    await query.edit_message_text(
+        """✅ <b>گروه با موفقیت حذف شد.</b>
+
+گروه، پیام/بنر ذخیره‌شده و تنظیمات مربوط به آن حذف شدند.""",
+        parse_mode="HTML",
+    )
+
+
+# --------------------- cancel delete group callback -----------------
+
+
+async def cancel_delete_group_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    group_db_id = int(query.data.split("_")[-1])
+
+    user_id = query.from_user.id
+
+    groups = get_user_groups(user_id)
+
+    group = None
+
+    for item in groups:
+
+        if item[0] == group_db_id:
+
+            group = item
+
+            break
+
+    if group is None:
+
+        await query.edit_message_text("❌ گروه پیدا نشد.")
+
+        return
+
+    # همان صفحه اطلاعات گروه را دوباره بساز
+    title = group[3]
+
+    username = group[4]
+
+    group_id = group[1]
+
+    enabled = bool(group[6])
+
+    username_text = f"@{username}" if username else "ندارد"
+
+    status = "🟢 فعال" if enabled else "🔴 متوقف"
+
+    group_message = get_group_message(
+        group_db_id,
+        user_id,
+    )
+
+    if group_message:
+
+        schedule_minutes = group_message[9]
+
+        schedule_text = f"{schedule_minutes} دقیقه" if schedule_minutes else "نامشخص"
+
+    else:
+
+        schedule_text = "نامشخص"
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📝 پیام / بنر",
+                callback_data=f"group_message_{group_db_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "⏱ زمان‌بندی",
+                callback_data=f"group_schedule_{group_db_id}",
+            ),
+            InlineKeyboardButton(
+                "🗑 حذف گروه",
+                callback_data=f"delete_group_{group_db_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="registered_group",
+            )
+        ],
+    ]
 
     await query.edit_message_text(
         f"""📢 <b>اطلاعات گروه</b>

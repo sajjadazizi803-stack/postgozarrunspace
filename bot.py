@@ -34,6 +34,9 @@ from handlers.connect_account import (
     group_message_callback,
     group_schedule_callback,
     receive_group_message,
+    delete_group_callback,
+    confirm_delete_group_callback,
+    cancel_delete_group_callback,
 )
 
 from handlers.connect_account import (
@@ -1413,6 +1416,27 @@ def create_bot():
         CallbackQueryHandler(
             registered_group_info,
             pattern=r"^registered_group_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            delete_group_callback,
+            pattern=r"^delete_group_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            confirm_delete_group_callback,
+            pattern=r"^confirm_delete_group_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            cancel_delete_group_callback,
+            pattern=r"^cancel_delete_group_\d+$",
         )
     )
 
