@@ -1410,7 +1410,7 @@ async def registered_group_info(
         ],
         [
             InlineKeyboardButton(
-                "▶️ شروع تبلیغات",
+                "⏹ توقف تبلیغات" if enabled else "▶️ شروع تبلیغات",
                 callback_data=f"start_group_ads_{group_db_id}",
             )
         ],
@@ -2074,7 +2074,7 @@ async def start_group_ads_callback(
     user_id = query.from_user.id
 
     # ==========================================
-    # بررسی گروه
+    # پیدا کردن گروه
     # ==========================================
 
     groups = get_user_groups(user_id)
@@ -2096,7 +2096,98 @@ async def start_group_ads_callback(
         return
 
     # ==========================================
-    # بررسی پیام / بنر
+    # وضعیت فعلی گروه
+    # ==========================================
+
+    enabled = bool(group[6])
+
+    # ==========================================
+    # اگر تبلیغات فعال است → توقف
+    # ==========================================
+
+    if enabled:
+
+        set_group_enabled(
+            registered_group_id=group_db_id,
+            user_id=user_id,
+            enabled=False,
+        )
+
+        title = group[3]
+
+        username = group[4]
+
+        group_id = group[1]
+
+        username_text = f"@{username}" if username else "ندارد"
+
+        group_message = get_group_message(
+            group_db_id,
+            user_id,
+        )
+
+        if group_message:
+
+            schedule_minutes = group_message[9]
+
+            schedule_text = (
+                f"{schedule_minutes} دقیقه" if schedule_minutes else "نامشخص"
+            )
+
+        else:
+
+            schedule_text = "نامشخص"
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "📝 پیام / بنر",
+                    callback_data=(f"group_message_{group_db_id}"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⏱ زمان‌بندی",
+                    callback_data=(f"group_schedule_{group_db_id}"),
+                ),
+                InlineKeyboardButton(
+                    "🗑 حذف گروه",
+                    callback_data=(f"delete_group_{group_db_id}"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "▶️ شروع تبلیغات",
+                    callback_data=(f"start_group_ads_{group_db_id}"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔙 بازگشت",
+                    callback_data="registered_group",
+                )
+            ],
+        ]
+
+        await query.message.reply_text("⏹ تبلیغات گروه متوقف شد.")
+
+        await query.edit_message_text(
+            f"""📢 <b>اطلاعات گروه</b>
+
+👥 <b>گروه:</b> {title}
+🔗 <b>یوزرنیم:</b> {username_text}
+🆔 <b>شناسه:</b> {group_id}
+⏱ <b>فاصله ارسال:</b> {schedule_text}
+
+📊 <b>وضعیت:</b> 🔴 متوقف""",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+        return
+
+    # ==========================================
+    # تبلیغات متوقف است → شروع
     # ==========================================
 
     group_message = get_group_message(
@@ -2142,6 +2233,10 @@ async def start_group_ads_callback(
 
         title = group[3]
 
+        username = group[4]
+
+        username_text = f"@{username}" if username else "ندارد"
+
         # ======================================
         # گرفتن Entity گروه
         # ======================================
@@ -2166,7 +2261,7 @@ async def start_group_ads_callback(
                 raise
 
         # ======================================
-        # اطلاعات پیام ذخیره‌شده
+        # اطلاعات پیام
         # ======================================
 
         message_type = group_message[3]
@@ -2235,16 +2330,14 @@ async def start_group_ads_callback(
         )
 
         # ======================================
-        # پایان
+        # پیام موفقیت
         # ======================================
 
         await query.message.reply_text("✅ تبلیغات با موفقیت شروع شد.")
 
-        # صفحه اطلاعات گروه را دوباره نمایش بده
-
-        username = group[4]
-
-        username_text = f"@{username}" if username else "ندارد"
+        # ======================================
+        # صفحه اطلاعات گروه
+        # ======================================
 
         keyboard = [
             [
@@ -2265,7 +2358,7 @@ async def start_group_ads_callback(
             ],
             [
                 InlineKeyboardButton(
-                    "▶️ شروع تبلیغات",
+                    "⏹ توقف تبلیغات",
                     callback_data=(f"start_group_ads_{group_db_id}"),
                 )
             ],
