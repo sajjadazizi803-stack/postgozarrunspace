@@ -109,8 +109,8 @@ async def show_group_info_panel(
     old_message_id=None,
 ):
     """
-    پنل مدیریت گروه را در پایین چت نمایش می‌دهد.
-    پنل قبلی حذف می‌شود تا همیشه آخرین پیام باشد.
+    پنل مدیریت گروه را نمایش می‌دهد.
+    اگر پیام قبلی وجود داشته باشد، همان پیام Edit می‌شود.
     """
 
     groups = get_user_groups(user_id)
@@ -118,25 +118,32 @@ async def show_group_info_panel(
     group = None
 
     for item in groups:
+
         if item[0] == group_db_id:
+
             group = item
+
             break
 
     if group is None:
+
         return None
 
     title = group[3]
+
     username = group[4]
+
     group_id = group[1]
+
     enabled = bool(group[6])
 
     username_text = f"@{username}" if username else "ندارد"
 
     status = "🟢 فعال" if enabled else "🔴 متوقف"
 
-    # -------------------------
-    # اطلاعات پیام
-    # -------------------------
+    # -----------------------------------------
+    # اطلاعات پیام و زمان‌بندی
+    # -----------------------------------------
 
     group_message = get_group_message(
         group_db_id,
@@ -144,54 +151,46 @@ async def show_group_info_panel(
     )
 
     if group_message:
+
         schedule_minutes = group_message[9]
 
         if schedule_minutes:
+
             schedule_text = f"{schedule_minutes} دقیقه"
+
         else:
+
             schedule_text = "نامشخص"
+
     else:
+
         schedule_text = "نامشخص"
 
-    # -------------------------
-    # حذف پنل قبلی
-    # -------------------------
-
-    if old_message_id:
-
-        try:
-            await context.bot.delete_message(
-                chat_id=chat_id,
-                message_id=old_message_id,
-            )
-        except Exception:
-            pass
-
-    # -------------------------
+    # -----------------------------------------
     # دکمه‌ها
-    # -------------------------
+    # -----------------------------------------
 
     keyboard = [
         [
             InlineKeyboardButton(
                 "📝 پیام / بنر",
-                callback_data=f"group_message_{group_db_id}",
+                callback_data=(f"group_message_{group_db_id}"),
             )
         ],
         [
             InlineKeyboardButton(
                 "⏱ زمان‌بندی",
-                callback_data=f"group_schedule_{group_db_id}",
+                callback_data=(f"group_schedule_{group_db_id}"),
             ),
             InlineKeyboardButton(
                 "🗑 حذف گروه",
-                callback_data=f"delete_group_{group_db_id}",
+                callback_data=(f"delete_group_{group_db_id}"),
             ),
         ],
         [
             InlineKeyboardButton(
-                "⏹ توقف تبلیغات" if enabled else "▶️ شروع تبلیغات",
-                callback_data=f"start_group_ads_{group_db_id}",
+                ("⏹ توقف تبلیغات" if enabled else "▶️ شروع تبلیغات"),
+                callback_data=(f"start_group_ads_{group_db_id}"),
             )
         ],
         [
@@ -202,28 +201,56 @@ async def show_group_info_panel(
         ],
     ]
 
-    # -------------------------
-    # ارسال پنل جدید
-    # -------------------------
-
-    message = await context.bot.send_message(
-        chat_id=chat_id,
-        text=f"""📢 <b>اطلاعات گروه</b>
+    panel_text = f"""📢 <b>اطلاعات گروه</b>
 
 👥 <b>گروه:</b> {title}
 🔗 <b>یوزرنیم:</b> {username_text}
 🆔 <b>شناسه:</b> {group_id}
 ⏱ <b>فاصله ارسال:</b> {schedule_text}
 
-📊 <b>وضعیت:</b> {status}""",
+📊 <b>وضعیت:</b> {status}"""
+
+    # -----------------------------------------
+    # اگر پیام قبلی وجود دارد → همان را Edit کن
+    # -----------------------------------------
+
+    if old_message_id:
+
+        try:
+
+            await context.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=old_message_id,
+                text=panel_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="HTML",
+            )
+
+            context.user_data["group_info_message_id"] = old_message_id
+
+            return old_message_id
+
+        except Exception as e:
+
+            print(
+                "[GROUP PANEL EDIT ERROR]",
+                e,
+            )
+
+    # -----------------------------------------
+    # اگر پیام قبلی وجود ندارد → پیام جدید بساز
+    # -----------------------------------------
+
+    message = await context.bot.send_message(
+        chat_id=chat_id,
+        text=panel_text,
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
 
-    # شناسه پنل جدید
     context.user_data["group_info_message_id"] = message.message_id
 
-    return message
+    return message.message_id
 
 
 # =========================
