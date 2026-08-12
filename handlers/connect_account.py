@@ -152,6 +152,8 @@ async def show_group_info_panel(
 
     if group_message:
 
+        message_status = "✅ ثبت شده"
+
         schedule_minutes = group_message[9]
 
         if schedule_minutes:
@@ -163,6 +165,8 @@ async def show_group_info_panel(
             schedule_text = "نامشخص"
 
     else:
+
+        message_status = "❌ ثبت نشده"
 
         schedule_text = "نامشخص"
 
@@ -206,6 +210,7 @@ async def show_group_info_panel(
 👥 <b>گروه:</b> {title}
 🔗 <b>یوزرنیم:</b> {username_text}
 🆔 <b>شناسه:</b> {group_id}
+📝 <b>پیام تبلیغ:</b> {message_status}
 ⏱ <b>فاصله ارسال:</b> {schedule_text}
 
 📊 <b>وضعیت:</b> {status}"""
