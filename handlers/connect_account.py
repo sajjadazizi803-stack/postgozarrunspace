@@ -2360,12 +2360,67 @@ async def start_group_ads_callback(
 
         elif file_path:
 
-            await user_client.send_file(
-                entity,
-                file_path,
-                caption=caption or "",
-                formatting_entities=formatting_entities,
-            )
+            # ======================================
+            # ارسال آلبوم یا فایل معمولی
+            # ======================================
+
+            saved_files = None
+
+            try:
+
+                saved_files = json.loads(file_path)
+
+            except Exception:
+
+                pass
+
+            # ======================================
+            # آلبوم
+            # ======================================
+
+            if isinstance(saved_files, list):
+
+                valid_files = []
+
+                from pathlib import Path
+
+                for saved_file in saved_files:
+
+                    path = Path(saved_file)
+
+                    if path.exists():
+
+                        valid_files.append(str(path))
+
+                if not valid_files:
+
+                    raise RuntimeError("ALBUM_FILES_NOT_FOUND")
+
+                await user_client.send_file(
+                    entity,
+                    valid_files,
+                    caption=caption or "",
+                    formatting_entities=formatting_entities,
+                )
+
+            # ======================================
+            # فایل/عکس معمولی
+            # ======================================
+
+            else:
+
+                path = Path(file_path)
+
+                if not path.exists():
+
+                    raise RuntimeError("MESSAGE_FILE_NOT_FOUND")
+
+                await user_client.send_file(
+                    entity,
+                    str(path),
+                    caption=caption or "",
+                    formatting_entities=formatting_entities,
+                )
 
         else:
 
@@ -2406,9 +2461,11 @@ async def start_group_ads_callback(
 
     except Exception as e:
 
-        pass
+        import traceback
 
-        await query.message.reply_text("❌ ارسال پیام به گروه انجام نشد.")
+        traceback.print_exc()
+
+        await query.message.reply_text(f"❌ ارسال پیام به گروه انجام نشد.\n\n{e}")
 
         return
 
