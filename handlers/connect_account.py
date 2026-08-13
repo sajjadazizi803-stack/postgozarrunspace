@@ -13,10 +13,7 @@ from telegram import (
     ReplyKeyboardMarkup,
 )
 
-from group_ads import (
-    build_quote_message,
-    build_blockquote_entities,
-)
+from group_ads import restore_message_entities
 
 import jdatetime
 from datetime import datetime
@@ -2299,31 +2296,14 @@ async def start_group_ads_callback(
         forward_message_id = group_message[8]
 
         # ======================================
-        # ارسال پیام
+        # ارسال پیام ذخیره‌شده
         # ======================================
 
-        if message_type == "text":
+        entities_json = group_message[13]
 
-            final_text = message_text or ""
+        formatting_entities = restore_message_entities(entities_json)
 
-            formatting_entities = None
-
-            if group_message[12]:
-                final_text, formatting_entities = build_quote_message(
-                    final_text,
-                    group_message[12],
-                )
-
-            if group_message[13]:
-                formatting_entities = build_blockquote_entities(group_message[13])
-
-            await user_client.send_message(
-                entity,
-                final_text,
-                formatting_entities=formatting_entities,
-            )
-
-        elif message_type == "forward":
+        if message_type == "forward":
 
             if not forward_chat_id or not forward_message_id:
 
@@ -2337,29 +2317,25 @@ async def start_group_ads_callback(
                 from_peer=source_entity,
             )
 
+        elif message_type == "text":
+
+            if not message_text:
+
+                raise RuntimeError("MESSAGE_TEXT_NOT_FOUND")
+
+            await user_client.send_message(
+                entity,
+                message_text,
+                formatting_entities=formatting_entities,
+            )
+
         elif file_path:
-
-            final_caption = caption or ""
-            formatting_entities = None
-
-            if group_message[12]:
-                final_caption, formatting_entities = build_quote_message(
-                    final_caption,
-                    group_message[12],
-                )
-
-            if group_message[13]:
-                formatting_entities = build_blockquote_entities(group_message[13])
-
-            send_kwargs = {
-                "caption": final_caption,
-                "formatting_entities": formatting_entities,
-            }
 
             await user_client.send_file(
                 entity,
                 file_path,
-                **send_kwargs,
+                caption=caption or "",
+                formatting_entities=formatting_entities,
             )
 
         else:
