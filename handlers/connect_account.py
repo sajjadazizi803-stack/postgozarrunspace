@@ -1768,6 +1768,7 @@ async def group_message_callback(
 async def receive_group_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
+    album_updates=None,
 ):
 
     if context.user_data.get("state") != State.GROUP_MESSAGE:
@@ -1791,6 +1792,14 @@ async def receive_group_message(
     message = update.message
 
     # ==========================================
+    # اگر آلبوم بود
+    # ==========================================
+
+    if album_updates is None:
+
+        album_updates = [update]
+
+    # ==========================================
     # مقداردهی اولیه
     # ==========================================
 
@@ -1811,12 +1820,6 @@ async def receive_group_message(
     # ==========================================
     # ذخیره تمام فرمت‌های پیام
     # ==========================================
-
-    # پیام متنی:
-    # message.entities
-    #
-    # رسانه + کپشن:
-    # message.caption_entities
 
     raw_entities = (
         message.entities if message.text is not None else message.caption_entities
@@ -1906,99 +1909,98 @@ async def receive_group_message(
             message_type = "text"
 
     # ==========================================
-    # رسانه
+    # رسانه / آلبوم
     # ==========================================
 
-    if message_type is None:
+    media_messages = []
 
-        media = None
+    for album_update in album_updates:
 
-        extension = ".bin"
+        album_message = album_update.message
 
-        if message.photo:
+        if album_message.photo:
+            media_messages.append(
+                (
+                    album_message.photo[-1],
+                    ".jpg",
+                )
+            )
 
-            media = message.photo[-1]
+        elif album_message.video:
+            media_messages.append(
+                (
+                    album_message.video,
+                    ".mp4",
+                )
+            )
+
+        elif album_message.document:
+            media_messages.append(
+                (
+                    album_message.document,
+                    ".bin",
+                )
+            )
+
+        elif album_message.audio:
+            media_messages.append(
+                (
+                    album_message.audio,
+                    ".mp3",
+                )
+            )
+
+        elif album_message.animation:
+            media_messages.append(
+                (
+                    album_message.animation,
+                    ".mp4",
+                )
+            )
+
+    if media_messages:
+
+        if len(media_messages) > 1:
+
+            message_type = "album"
+
+        else:
 
             message_type = "photo"
 
-            extension = ".jpg"
+        from pathlib import Path
 
-        elif message.video:
+        user_folder = Path(config.RAILWAY_DATA_PATH) / "group_messages" / str(user_id)
 
-            media = message.video
+        user_folder.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-            message_type = "video"
+        saved_files = []
 
-            extension = ".mp4"
+        for index, (media, extension) in enumerate(media_messages):
 
-        elif message.document:
-
-            media = message.document
-
-            message_type = "document"
-
-            extension = ".bin"
-
-        elif message.audio:
-
-            media = message.audio
-
-            message_type = "audio"
-
-            extension = ".mp3"
-
-        elif message.voice:
-
-            media = message.voice
-
-            message_type = "voice"
-
-            extension = ".ogg"
-
-        elif message.animation:
-
-            media = message.animation
-
-            message_type = "animation"
-
-            extension = ".mp4"
-
-        elif message.sticker:
-
-            media = message.sticker
-
-            message_type = "sticker"
-
-            extension = ".webp"
-
-        # ==========================================
-        # دانلود رسانه
-        # ==========================================
-
-        if media:
-
-            from pathlib import Path
-
-            user_folder = (
-                Path(config.RAILWAY_DATA_PATH) / "group_messages" / str(user_id)
+            file_path_item = user_folder / (
+                f"group_{group_db_id}_" f"{index}{extension}"
             )
-
-            user_folder.mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-
-            file_path = user_folder / f"group_{group_db_id}{extension}"
-
-            # دریافت فایل از Telegram
 
             telegram_file = await media.get_file()
 
-            # دانلود فایل
+            await telegram_file.download_to_drive(custom_path=str(file_path_item))
 
-            await telegram_file.download_to_drive(custom_path=str(file_path))
+            saved_files.append(str(file_path_item))
 
-            file_path = str(file_path)
+        if len(saved_files) > 1:
+
+            file_path = json.dumps(
+                saved_files,
+                ensure_ascii=False,
+            )
+
+        else:
+
+            file_path = saved_files[0]
 
     # ==========================================
     # اگر نوع پیام قابل ذخیره نبود
@@ -2151,7 +2153,6 @@ async def group_schedule_callback(
 
 مثال:
 1️⃣ <code>1</code> → هر ۱ دقیقه
-2️⃣ <code>20</code> → هر ۲۰ دقیقه
 3️⃣ <code>120</code> → هر ۲ ساعت
 
 ⚠️ کمتر از ۱ دقیقه قابل قبول نیست.""",

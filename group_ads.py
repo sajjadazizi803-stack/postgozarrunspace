@@ -336,6 +336,50 @@ async def send_group_message(
 
     if file_path:
 
+        # =========================================
+        # آلبوم
+        # =========================================
+
+        try:
+
+            saved_files = json.loads(file_path)
+
+        except Exception:
+
+            saved_files = None
+
+        if isinstance(saved_files, list):
+
+            valid_files = []
+
+            for saved_file in saved_files:
+
+                path = Path(saved_file)
+
+                if path.exists():
+
+                    valid_files.append(str(path))
+
+            if not valid_files:
+
+                raise RuntimeError("فایل‌های آلبوم پیدا نشدند.")
+
+            # Telegram/Telethon با ارسال لیست فایل‌ها
+            # آنها را به صورت آلبوم ارسال می‌کند.
+
+            await client.send_file(
+                entity,
+                valid_files,
+                caption=caption or "",
+                formatting_entities=formatting_entities,
+            )
+
+            return
+
+        # =========================================
+        # پیام رسانه‌ای معمولی
+        # =========================================
+
         path = Path(file_path)
 
         if not path.exists():

@@ -83,6 +83,7 @@ from database import save_phone
 from database import get_account
 from telethon.errors import SessionPasswordNeededError
 from telethon.errors import PasswordHashInvalidError
+import asyncio
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -951,6 +952,63 @@ async def conversation_router(update, context):
         from handlers.connect_account import (
             receive_group_message,
         )
+
+        # ==========================================
+        # دریافت آلبوم
+        # ==========================================
+
+        media_group_id = getattr(
+            update.message,
+            "media_group_id",
+            None,
+        )
+
+        if media_group_id:
+
+            album_key = (
+                f"group_album_" f"{update.effective_user.id}_" f"{media_group_id}"
+            )
+
+            album_messages = context.user_data.setdefault(
+                album_key,
+                [],
+            )
+
+            album_messages.append(update)
+
+            # اولین پیام آلبوم یک Worker کوچک ایجاد می‌کند.
+            # پیام‌های بعدی قبل از اجرای آن به لیست اضافه می‌شوند.
+
+            task_key = f"{album_key}_task"
+
+            if task_key not in context.user_data:
+
+                async def process_album():
+
+                    await asyncio.sleep(1.5)
+
+                    updates = context.user_data.pop(
+                        album_key,
+                        [],
+                    )
+
+                    context.user_data.pop(
+                        task_key,
+                        None,
+                    )
+
+                    if not updates:
+                        return
+
+                    await receive_group_message(
+                        updates[0],
+                        context,
+                        album_updates=updates,
+                    )
+
+                context.user_data[task_key] = asyncio.create_task(process_album())
+
+            return
 
         return await receive_group_message(
             update,
