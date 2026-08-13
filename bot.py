@@ -985,7 +985,7 @@ async def conversation_router(update, context):
 
                 async def process_album():
 
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(1.5)
 
                     updates = context.user_data.pop(
                         album_key,

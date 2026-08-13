@@ -2060,16 +2060,18 @@ async def receive_group_message(
     username_text = f"@{username}" if username else "ندارد"
 
     # ==========================================
-    # حذف پیام کاربر
+    # حذف پیام‌های کاربر
     # ==========================================
 
-    try:
+    for album_update in album_updates:
 
-        await update.message.delete()
+        try:
 
-    except Exception:
+            await album_update.message.delete()
 
-        pass
+        except Exception:
+
+            pass
 
     # ==========================================
     # حذف پیام راهنما
