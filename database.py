@@ -137,7 +137,9 @@ CREATE TABLE IF NOT EXISTS group_messages(
 
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
 
-    quote_text TEXT    
+    quote_text TEXT,
+
+    entities_json TEXT
 )
 """)
 
@@ -149,6 +151,10 @@ columns = [
 
 if "quote_text" not in columns:
     cursor.execute("ALTER TABLE group_messages ADD COLUMN quote_text TEXT")
+    db.commit()
+
+if "entities_json" not in columns:
+    cursor.execute("ALTER TABLE group_messages ADD COLUMN entities_json TEXT")
     db.commit()
 
 # ================= add Transfers =================
@@ -760,6 +766,7 @@ def save_group_message(
     forward_chat_id=None,
     forward_message_id=None,
     quote_text=None,
+    entities_json=None,
 ):
 
     cursor.execute(
@@ -782,9 +789,10 @@ def save_group_message(
             file_path,
             forward_chat_id,
             forward_message_id,
-            quote_text
+            quote_text,
+            entities_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)
         """,
         (
             registered_group_id,
@@ -796,6 +804,7 @@ def save_group_message(
             forward_chat_id,
             forward_message_id,
             quote_text,
+            entities_json,
         ),
     )
 
@@ -824,7 +833,8 @@ def get_group_message(
             schedule_minutes,
             created_at,
             updated_at,
-            quote_text
+            quote_text,
+            entities_json
         FROM group_messages
         WHERE registered_group_id=?
         AND user_id=?

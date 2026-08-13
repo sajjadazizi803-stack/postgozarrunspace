@@ -13,6 +13,11 @@ from telegram import (
     ReplyKeyboardMarkup,
 )
 
+from group_ads import (
+    build_quote_message,
+    build_blockquote_entities,
+)
+
 import jdatetime
 from datetime import datetime
 from telegram_client import tg_client
@@ -27,6 +32,7 @@ from database import get_user_transfer_count
 from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.types import InputPeerChannel
 import config
+import json
 
 from database import (
     delete_transfer,
@@ -1796,12 +1802,39 @@ async def receive_group_message(
     caption = message.caption
 
     # ==========================================
+    # ذخیره فرمت نقل‌قول (Blockquote)
+    # ==========================================
+
+    entities_json = None
+
+    if message.entities:
+        blockquote_entities = []
+
+        for entity in message.entities:
+            if entity.type in ("blockquote", "expandable_blockquote"):
+                blockquote_entities.append(
+                    {
+                        "type": entity.type,
+                        "offset": entity.offset,
+                        "length": entity.length,
+                    }
+                )
+
+        if blockquote_entities:
+            entities_json = json.dumps(
+                blockquote_entities,
+                ensure_ascii=False,
+            )
+
+    # ==========================================
     # ذخیره Quote / نقل‌قول
     # ==========================================
 
     quote_text = None
 
-    if message.reply_to_message:
+    quote_text = None
+
+    if not entities_json and message.reply_to_message:
         replied = message.reply_to_message
 
         quote_text = (replied.text or replied.caption or "").strip()
@@ -1971,6 +2004,7 @@ async def receive_group_message(
         forward_chat_id=forward_chat_id,
         forward_message_id=forward_message_id,
         quote_text=quote_text,
+        entities_json=entities_json,
     )
 
     context.user_data["state"] = State.NONE
@@ -2265,9 +2299,23 @@ async def start_group_ads_callback(
 
         if message_type == "text":
 
+            final_text = message_text or ""
+
+            formatting_entities = None
+
+            if group_message[12]:
+                final_text, formatting_entities = build_quote_message(
+                    final_text,
+                    group_message[12],
+                )
+
+            if group_message[13]:
+                formatting_entities = build_blockquote_entities(group_message[13])
+
             await user_client.send_message(
                 entity,
-                message_text,
+                final_text,
+                formatting_entities=formatting_entities,
             )
 
         elif message_type == "forward":
@@ -2286,11 +2334,22 @@ async def start_group_ads_callback(
 
         elif file_path:
 
-            send_kwargs = {}
+            final_caption = caption or ""
+            formatting_entities = None
 
-            if caption:
+            if group_message[12]:
+                final_caption, formatting_entities = build_quote_message(
+                    final_caption,
+                    group_message[12],
+                )
 
-                send_kwargs["caption"] = caption
+            if group_message[13]:
+                formatting_entities = build_blockquote_entities(group_message[13])
+
+            send_kwargs = {
+                "caption": final_caption,
+                "formatting_entities": formatting_entities,
+            }
 
             await user_client.send_file(
                 entity,

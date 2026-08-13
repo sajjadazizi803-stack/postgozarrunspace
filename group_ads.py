@@ -9,6 +9,7 @@ from telethon.tl.types import (
 )
 
 import config
+import json
 
 from database import (
     get_user_groups,
@@ -116,6 +117,49 @@ def build_quote_message(
     return final_text, [quote_entity]
 
 
+# ---------------------- build blockquote_entities ----------------
+
+
+def build_blockquote_entities(entities_json):
+    if not entities_json:
+        return None
+
+    try:
+        data = json.loads(entities_json)
+    except Exception:
+        return None
+
+    entities = []
+
+    for item in data:
+        entity_type = item.get("type")
+        offset = item.get("offset")
+        length = item.get("length")
+
+        if offset is None or length is None:
+            continue
+
+        if entity_type == "blockquote":
+            entities.append(
+                MessageEntityBlockquote(
+                    offset=offset,
+                    length=length,
+                    collapsed=False,
+                )
+            )
+
+        elif entity_type == "expandable_blockquote":
+            entities.append(
+                MessageEntityBlockquote(
+                    offset=offset,
+                    length=length,
+                    collapsed=True,
+                )
+            )
+
+    return entities or None
+
+
 # =========================================================
 # SEND SAVED MESSAGE
 # =========================================================
@@ -194,6 +238,8 @@ async def send_group_message(
 
     quote_text = group_message[12]
 
+    entities_json = group_message[13]
+
     # =========================================
     # TEXT
     # =========================================
@@ -207,6 +253,11 @@ async def send_group_message(
             message_text,
             quote_text,
         )
+
+    saved_entities = build_blockquote_entities(entities_json)
+
+    if saved_entities:
+        formatting_entities = saved_entities
 
         await client.send_message(
             entity,
@@ -252,6 +303,11 @@ async def send_group_message(
             caption,
             quote_text,
         )
+
+    saved_entities = build_blockquote_entities(entities_json)
+
+    if saved_entities:
+        formatting_entities = saved_entities
 
         send_kwargs = {
             "caption": final_caption,
