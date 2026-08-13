@@ -1554,7 +1554,7 @@ def create_bot():
 
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
+            filters.ALL & ~filters.COMMAND,
             text_buttons,
         ),
         group=1,

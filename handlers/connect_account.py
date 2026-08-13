@@ -1914,8 +1914,6 @@ async def receive_group_message(
 
         if media:
 
-            import os
-
             from pathlib import Path
 
             user_folder = Path("group_messages") / str(user_id)
@@ -1927,7 +1925,11 @@ async def receive_group_message(
 
             file_path = user_folder / f"group_{group_db_id}{extension}"
 
-            await message.download_to_drive(custom_path=file_path)
+            # دریافت فایل از Telegram
+            telegram_file = await media.get_file()
+
+            # دانلود فایل در مسیر مشخص‌شده
+            await telegram_file.download_to_drive(custom_path=str(file_path))
 
             file_path = str(file_path)
 
