@@ -1802,51 +1802,56 @@ async def receive_group_message(
     caption = message.caption
 
     # ==========================================
-    # ذخیره فرمت نقل‌قول (Blockquote)
+    # ذخیره تمام فرمت‌های پیام
     # ==========================================
 
     entities_json = None
 
-    if message.entities:
-        blockquote_entities = []
+    # برای پیام متنی:
+    # message.entities
+    #
+    # برای عکس/ویدیو/فایل با کپشن:
+    # message.caption_entities
 
-        for entity in message.entities:
-            if entity.type in ("blockquote", "expandable_blockquote"):
-                blockquote_entities.append(
-                    {
-                        "type": entity.type,
-                        "offset": entity.offset,
-                        "length": entity.length,
-                    }
-                )
+    raw_entities = (
+        message.entities if message.text is not None else message.caption_entities
+    )
 
-        if blockquote_entities:
-            entities_json = json.dumps(
-                blockquote_entities,
-                ensure_ascii=False,
-            )
+    if raw_entities:
 
-    # ==========================================
-    # ذخیره Quote / نقل‌قول
-    # ==========================================
+        serialized_entities = []
 
-    quote_text = None
+        for entity in raw_entities:
 
-    quote_text = None
+            item = {
+                "type": entity.type,
+                "offset": entity.offset,
+                "length": entity.length,
+            }
 
-    if not entities_json and message.reply_to_message:
-        replied = message.reply_to_message
+            if getattr(entity, "url", None):
+                item["url"] = entity.url
 
-        quote_text = (replied.text or replied.caption or "").strip()
+            if getattr(entity, "language", None):
+                item["language"] = entity.language
 
-        if not quote_text:
-            quote_text = None
+            if getattr(entity, "custom_emoji_id", None):
+                item["custom_emoji_id"] = entity.custom_emoji_id
 
-    file_path = None
+            if getattr(entity, "user", None):
 
-    forward_chat_id = None
+                try:
+                    item["user_id"] = entity.user.id
 
-    forward_message_id = None
+                except Exception:
+                    pass
+
+            serialized_entities.append(item)
+
+        entities_json = json.dumps(
+            serialized_entities,
+            ensure_ascii=False,
+        )
 
     # ==========================================
     # بررسی فوروارد
@@ -2003,7 +2008,7 @@ async def receive_group_message(
         file_path=file_path,
         forward_chat_id=forward_chat_id,
         forward_message_id=forward_message_id,
-        quote_text=quote_text,
+        quote_text=None,
         entities_json=entities_json,
     )
 

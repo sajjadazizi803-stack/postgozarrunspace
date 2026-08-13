@@ -3,10 +3,8 @@ from pathlib import Path
 
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from telethon.tl.types import (
-    InputPeerChannel,
-    MessageEntityBlockquote,
-)
+from telethon.tl.types import InputPeerChannel
+from telethon import types
 
 import config
 import json
@@ -89,73 +87,123 @@ async def get_user_client(user_id):
     return client
 
 
-# ------------------ build quote message -----------------
+# -------------------- restore message entities ------------------
 
 
-def build_quote_message(
-    message_text,
-    quote_text,
-):
-    if not quote_text:
-        return message_text, None
+def restore_message_entities(entities_json):
+    """
+    تمام فرمت‌های پیام Telegram را از JSON
+    به Entityهای Telethon تبدیل می‌کند.
+    """
 
-    message_text = message_text or ""
-
-    if message_text:
-        final_text = f"{quote_text}\n\n{message_text}"
-    else:
-        final_text = quote_text
-
-    # Telegram entities use UTF-16 offsets
-    quote_length = len(quote_text.encode("utf-16-le")) // 2
-
-    quote_entity = MessageEntityBlockquote(
-        offset=0,
-        length=quote_length,
-    )
-
-    return final_text, [quote_entity]
-
-
-# ---------------------- build blockquote_entities ----------------
-
-
-def build_blockquote_entities(entities_json):
     if not entities_json:
         return None
 
     try:
         data = json.loads(entities_json)
+
     except Exception:
         return None
 
     entities = []
 
     for item in data:
+
         entity_type = item.get("type")
         offset = item.get("offset")
         length = item.get("length")
 
+        if not entity_type:
+            continue
+
         if offset is None or length is None:
             continue
 
-        if entity_type == "blockquote":
-            entities.append(
-                MessageEntityBlockquote(
-                    offset=offset,
-                    length=length,
-                    collapsed=False,
-                )
-            )
+        # Telegram Bot API:
+        # bold -> Telethon MessageEntityBold
+        class_name = {
+            "mention": "MessageEntityMention",
+            "hashtag": "MessageEntityHashtag",
+            "cashtag": "MessageEntityCashtag",
+            "bot_command": "MessageEntityBotCommand",
+            "url": "MessageEntityUrl",
+            "email": "MessageEntityEmail",
+            "phone_number": "MessageEntityPhone",
+            "bold": "MessageEntityBold",
+            "italic": "MessageEntityItalic",
+            "underline": "MessageEntityUnderline",
+            "strikethrough": "MessageEntityStrike",
+            "spoiler": "MessageEntitySpoiler",
+            "blockquote": "MessageEntityBlockquote",
+            "expandable_blockquote": "MessageEntityBlockquote",
+            "code": "MessageEntityCode",
+            "pre": "MessageEntityPre",
+            "text_link": "MessageEntityTextUrl",
+            "text_mention": "MessageEntityMentionName",
+            "custom_emoji": "MessageEntityCustomEmoji",
+        }.get(entity_type)
+
+        if not class_name:
+            continue
+
+        entity_class = getattr(
+            types,
+            class_name,
+            None,
+        )
+
+        if not entity_class:
+            continue
+
+        kwargs = {
+            "offset": offset,
+            "length": length,
+        }
+
+        if entity_type == "text_link":
+
+            url = item.get("url")
+
+            if url:
+                kwargs["url"] = url
+
+        elif entity_type == "pre":
+
+            language = item.get("language") or ""
+
+            kwargs["language"] = language
+
+        elif entity_type == "custom_emoji":
+
+            custom_emoji_id = item.get("custom_emoji_id")
+
+            if custom_emoji_id:
+                kwargs["document_id"] = int(custom_emoji_id)
+
+        elif entity_type == "blockquote":
+
+            kwargs["collapsed"] = False
 
         elif entity_type == "expandable_blockquote":
-            entities.append(
-                MessageEntityBlockquote(
-                    offset=offset,
-                    length=length,
-                    collapsed=True,
-                )
-            )
+
+            kwargs["collapsed"] = True
+
+        elif entity_type == "text_mention":
+
+            user_id = item.get("user_id")
+
+            if user_id:
+                # این مورد در صورت نیاز می‌تواند
+                # با Entity کامل کاربر تکمیل شود.
+                continue
+
+        try:
+
+            entities.append(entity_class(**kwargs))
+
+        except Exception as e:
+
+            print(f"[ENTITY RESTORE ERROR] " f"{entity_type}: {e}")
 
     return entities or None
 
@@ -236,36 +284,13 @@ async def send_group_message(
 
     forward_message_id = group_message[8]
 
-    quote_text = group_message[12]
-
     entities_json = group_message[13]
 
     # =========================================
-    # TEXT
+    # بازسازی فرمت‌های پیام
     # =========================================
 
-    if message_type == "text":
-
-        if not message_text and not quote_text:
-            raise RuntimeError("متن پیام خالی است.")
-
-        final_text, formatting_entities = build_quote_message(
-            message_text,
-            quote_text,
-        )
-
-    saved_entities = build_blockquote_entities(entities_json)
-
-    if saved_entities:
-        formatting_entities = saved_entities
-
-        await client.send_message(
-            entity,
-            final_text,
-            formatting_entities=formatting_entities,
-        )
-
-        return
+    formatting_entities = restore_message_entities(entities_json)
 
     # =========================================
     # FORWARD
@@ -288,6 +313,24 @@ async def send_group_message(
         return
 
     # =========================================
+    # TEXT
+    # =========================================
+
+    if message_type == "text":
+
+        if not message_text:
+
+            raise RuntimeError("متن پیام خالی است.")
+
+        await client.send_message(
+            entity,
+            message_text,
+            formatting_entities=formatting_entities,
+        )
+
+        return
+
+    # =========================================
     # MEDIA
     # =========================================
 
@@ -299,25 +342,11 @@ async def send_group_message(
 
             raise RuntimeError(f"فایل پیام پیدا نشد: {file_path}")
 
-        final_caption, formatting_entities = build_quote_message(
-            caption,
-            quote_text,
-        )
-
-    saved_entities = build_blockquote_entities(entities_json)
-
-    if saved_entities:
-        formatting_entities = saved_entities
-
-        send_kwargs = {
-            "caption": final_caption,
-            "formatting_entities": formatting_entities,
-        }
-
         await client.send_file(
             entity,
             str(path),
-            **send_kwargs,
+            caption=caption or "",
+            formatting_entities=formatting_entities,
         )
 
         return
