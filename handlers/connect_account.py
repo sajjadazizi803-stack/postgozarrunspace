@@ -1771,11 +1771,9 @@ async def receive_group_message(
 ):
 
     if context.user_data.get("state") != State.GROUP_MESSAGE:
-
         return
 
     if not update.message:
-
         return
 
     user_id = update.effective_user.id
@@ -1792,22 +1790,32 @@ async def receive_group_message(
 
     message = update.message
 
+    # ==========================================
+    # مقداردهی اولیه
+    # ==========================================
+
     message_type = None
 
     message_text = message.text
 
     caption = message.caption
 
+    file_path = None
+
+    forward_chat_id = None
+
+    forward_message_id = None
+
+    entities_json = None
+
     # ==========================================
     # ذخیره تمام فرمت‌های پیام
     # ==========================================
 
-    entities_json = None
-
-    # برای پیام متنی:
+    # پیام متنی:
     # message.entities
     #
-    # برای عکس/ویدیو/فایل با کپشن:
+    # رسانه + کپشن:
     # message.caption_entities
 
     raw_entities = (
@@ -1827,20 +1835,25 @@ async def receive_group_message(
             }
 
             if getattr(entity, "url", None):
+
                 item["url"] = entity.url
 
             if getattr(entity, "language", None):
+
                 item["language"] = entity.language
 
             if getattr(entity, "custom_emoji_id", None):
+
                 item["custom_emoji_id"] = entity.custom_emoji_id
 
             if getattr(entity, "user", None):
 
                 try:
+
                     item["user_id"] = entity.user.id
 
                 except Exception:
+
                     pass
 
             serialized_entities.append(item)
@@ -1886,9 +1899,11 @@ async def receive_group_message(
     # پیام متنی
     # ==========================================
 
-    if message_type is None and message.text:
+    if message_type is None:
 
-        message_type = "text"
+        if message.text:
+
+            message_type = "text"
 
     # ==========================================
     # رسانه
@@ -1956,6 +1971,10 @@ async def receive_group_message(
 
             extension = ".webp"
 
+        # ==========================================
+        # دانلود رسانه
+        # ==========================================
+
         if media:
 
             from pathlib import Path
@@ -1972,9 +1991,11 @@ async def receive_group_message(
             file_path = user_folder / f"group_{group_db_id}{extension}"
 
             # دریافت فایل از Telegram
+
             telegram_file = await media.get_file()
 
-            # دانلود فایل در مسیر مشخص‌شده
+            # دانلود فایل
+
             await telegram_file.download_to_drive(custom_path=str(file_path))
 
             file_path = str(file_path)
@@ -1996,6 +2017,7 @@ async def receive_group_message(
     # ==========================================
     # ذخیره در دیتابیس
     # ==========================================
+
     save_group_message(
         registered_group_id=group_db_id,
         user_id=user_id,
@@ -2035,20 +2057,21 @@ async def receive_group_message(
 
     username_text = f"@{username}" if username else "ندارد"
 
-    group_info_message_id = context.user_data.get("group_info_message_id")
-
-    # -------------------------
+    # ==========================================
     # حذف پیام کاربر
-    # -------------------------
+    # ==========================================
 
     try:
+
         await update.message.delete()
+
     except Exception:
+
         pass
 
-    # -------------------------
+    # ==========================================
     # حذف پیام راهنما
-    # -------------------------
+    # ==========================================
 
     prompt_id = context.user_data.pop(
         "group_message_prompt_id",
@@ -2058,16 +2081,19 @@ async def receive_group_message(
     if prompt_id:
 
         try:
+
             await context.bot.delete_message(
                 chat_id=update.effective_chat.id,
                 message_id=prompt_id,
             )
+
         except Exception:
+
             pass
 
-    # -------------------------
+    # ==========================================
     # انتقال پنل به پایین چت
-    # -------------------------
+    # ==========================================
 
     old_panel_id = context.user_data.pop(
         "group_info_message_id",
