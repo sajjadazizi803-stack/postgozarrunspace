@@ -874,3 +874,17 @@ def set_group_enabled(
     )
 
     db.commit()
+
+
+def get_all_active_group_ads():
+
+    cursor.execute("""
+        SELECT
+            user_id,
+            id
+        FROM registered_groups
+        WHERE enabled=1
+        ORDER BY id ASC
+        """)
+
+    return cursor.fetchall()

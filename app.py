@@ -24,6 +24,19 @@ async def startup(app):
 
     asyncio.create_task(telethon_worker())
 
+    try:
+
+        from group_ads import start_all_group_ads
+
+        await start_all_group_ads()
+
+    except Exception as e:
+
+        print(
+            "[GROUP ADS STARTUP ERROR]",
+            e,
+        )
+
     print("🚀 PostGozar Bot Started Successfully.")
 
 

@@ -26,6 +26,7 @@ from database import update_transfer_target
 from database import get_user_transfer_count
 from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.types import InputPeerChannel
+import config
 
 from database import (
     delete_transfer,
@@ -1916,7 +1917,9 @@ async def receive_group_message(
 
             from pathlib import Path
 
-            user_folder = Path("group_messages") / str(user_id)
+            user_folder = (
+                Path(config.RAILWAY_DATA_PATH) / "group_messages" / str(user_id)
+            )
 
             user_folder.mkdir(
                 parents=True,
@@ -2143,6 +2146,12 @@ async def start_group_ads_callback(
             enabled=False,
         )
 
+        from group_ads import stop_group_ads_worker
+
+        await stop_group_ads_worker(
+            group_db_id=group_db_id,
+        )
+
         old_panel_id = query.message.message_id
 
         await show_group_info_panel(
@@ -2292,6 +2301,13 @@ async def start_group_ads_callback(
             registered_group_id=group_db_id,
             user_id=user_id,
             enabled=True,
+        )
+
+        from group_ads import start_group_ads_worker
+
+        await start_group_ads_worker(
+            user_id=user_id,
+            group_db_id=group_db_id,
         )
 
         # ======================================
