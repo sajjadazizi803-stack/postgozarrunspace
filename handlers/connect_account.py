@@ -238,10 +238,7 @@ async def show_group_info_panel(
 
         except Exception as e:
 
-            print(
-                "[GROUP PANEL EDIT ERROR]",
-                e,
-            )
+            pass
 
     # -----------------------------------------
     # اگر پیام قبلی وجود ندارد → پیام جدید بساز
@@ -491,10 +488,7 @@ async def receive_group(
 
     except Exception as e:
 
-        print(
-            "[GROUP REGISTRATION ERROR]",
-            e,
-        )
+        pass
 
         try:
 
@@ -1801,6 +1795,20 @@ async def receive_group_message(
 
     caption = message.caption
 
+    # ==========================================
+    # ذخیره Quote / نقل‌قول
+    # ==========================================
+
+    quote_text = None
+
+    if message.reply_to_message:
+        replied = message.reply_to_message
+
+        quote_text = (replied.text or replied.caption or "").strip()
+
+        if not quote_text:
+            quote_text = None
+
     file_path = None
 
     forward_chat_id = None
@@ -1962,6 +1970,7 @@ async def receive_group_message(
         file_path=file_path,
         forward_chat_id=forward_chat_id,
         forward_message_id=forward_message_id,
+        quote_text=quote_text,
     )
 
     context.user_data["state"] = State.NONE
@@ -2328,10 +2337,7 @@ async def start_group_ads_callback(
 
     except Exception as e:
 
-        print(
-            "[START GROUP ADS ERROR]",
-            e,
-        )
+        pass
 
         await query.message.reply_text("❌ ارسال پیام به گروه انجام نشد.")
 

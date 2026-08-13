@@ -3,7 +3,10 @@ from pathlib import Path
 
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from telethon.tl.types import InputPeerChannel
+from telethon.tl.types import (
+    InputPeerChannel,
+    MessageEntityBlockquote,
+)
 
 import config
 
@@ -85,6 +88,34 @@ async def get_user_client(user_id):
     return client
 
 
+# ------------------ build quote message -----------------
+
+
+def build_quote_message(
+    message_text,
+    quote_text,
+):
+    if not quote_text:
+        return message_text, None
+
+    message_text = message_text or ""
+
+    if message_text:
+        final_text = f"{quote_text}\n\n{message_text}"
+    else:
+        final_text = quote_text
+
+    # Telegram entities use UTF-16 offsets
+    quote_length = len(quote_text.encode("utf-16-le")) // 2
+
+    quote_entity = MessageEntityBlockquote(
+        offset=0,
+        length=quote_length,
+    )
+
+    return final_text, [quote_entity]
+
+
 # =========================================================
 # SEND SAVED MESSAGE
 # =========================================================
@@ -161,19 +192,26 @@ async def send_group_message(
 
     forward_message_id = group_message[8]
 
+    quote_text = group_message[12]
+
     # =========================================
     # TEXT
     # =========================================
 
     if message_type == "text":
 
-        if not message_text:
-
+        if not message_text and not quote_text:
             raise RuntimeError("متن پیام خالی است.")
+
+        final_text, formatting_entities = build_quote_message(
+            message_text,
+            quote_text,
+        )
 
         await client.send_message(
             entity,
-            message_text,
+            final_text,
+            formatting_entities=formatting_entities,
         )
 
         return
@@ -210,11 +248,15 @@ async def send_group_message(
 
             raise RuntimeError(f"فایل پیام پیدا نشد: {file_path}")
 
-        send_kwargs = {}
+        final_caption, formatting_entities = build_quote_message(
+            caption,
+            quote_text,
+        )
 
-        if caption:
-
-            send_kwargs["caption"] = caption
+        send_kwargs = {
+            "caption": final_caption,
+            "formatting_entities": formatting_entities,
+        }
 
         await client.send_file(
             entity,
@@ -239,8 +281,6 @@ async def group_ads_worker(
 
     key = group_db_id
 
-    print(f"[GROUP ADS] Worker started: " f"user={user_id}, group={group_db_id}")
-
     while True:
 
         try:
@@ -262,8 +302,6 @@ async def group_ads_worker(
 
             if group is None:
 
-                print(f"[GROUP ADS] Group removed: {group_db_id}")
-
                 break
 
             # -----------------------------------------
@@ -273,8 +311,6 @@ async def group_ads_worker(
             enabled = bool(group[6])
 
             if not enabled:
-
-                print(f"[GROUP ADS] Worker stopped: " f"group={group_db_id}")
 
                 break
 
@@ -289,8 +325,6 @@ async def group_ads_worker(
 
             if not group_message:
 
-                print(f"[GROUP ADS] Message missing: " f"group={group_db_id}")
-
                 set_group_enabled(
                     registered_group_id=group_db_id,
                     user_id=user_id,
@@ -302,8 +336,6 @@ async def group_ads_worker(
             schedule_minutes = group_message[9]
 
             if not schedule_minutes or schedule_minutes < 1:
-
-                print(f"[GROUP ADS] Schedule missing: " f"group={group_db_id}")
 
                 set_group_enabled(
                     registered_group_id=group_db_id,
@@ -351,17 +383,13 @@ async def group_ads_worker(
                 group_db_id=group_db_id,
             )
 
-            print(f"[GROUP ADS] Sent successfully: " f"group={group_db_id}")
-
         except asyncio.CancelledError:
-
-            print(f"[GROUP ADS] Cancelled: " f"group={group_db_id}")
 
             break
 
         except Exception as e:
 
-            print(f"[GROUP ADS ERROR] " f"group={group_db_id}: {e}")
+            pass
 
             # اگر خطا موقتی بود، Worker نمی‌میرد.
             await asyncio.sleep(10)
@@ -382,8 +410,6 @@ async def start_group_ads_worker(
     existing = group_ads_tasks.get(group_db_id)
 
     if existing and not existing.done():
-
-        print(f"[GROUP ADS] Worker already exists: " f"group={group_db_id}")
 
         return
 
@@ -435,8 +461,6 @@ async def stop_group_ads_worker(
 
 async def start_all_group_ads():
 
-    print("[GROUP ADS] Checking active groups...")
-
     # برای پیدا کردن userها از خود groupها استفاده می‌کنیم.
     # user_id ها را از دیتابیس می‌گیریم.
 
@@ -458,7 +482,7 @@ async def start_all_group_ads():
 
         except Exception as e:
 
-            print(f"[GROUP ADS START ERROR] " f"group={group_db_id}: {e}")
+            pass
 
 
 # =========================================================

@@ -135,11 +135,21 @@ CREATE TABLE IF NOT EXISTS group_messages(
 
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
 
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+    quote_text TEXT    
 )
 """)
 
 db.commit()
+
+columns = [
+    row[1] for row in cursor.execute("PRAGMA table_info(group_messages)").fetchall()
+]
+
+if "quote_text" not in columns:
+    cursor.execute("ALTER TABLE group_messages ADD COLUMN quote_text TEXT")
+    db.commit()
 
 # ================= add Transfers =================
 
@@ -734,10 +744,7 @@ def delete_registered_group(
 
         except Exception as e:
 
-            print(
-                "[GROUP FILE DELETE ERROR]",
-                e,
-            )
+            pass
 
 
 # ================= GROUP MESSAGE FUNCTIONS =================
@@ -752,6 +759,7 @@ def save_group_message(
     file_path=None,
     forward_chat_id=None,
     forward_message_id=None,
+    quote_text=None,
 ):
 
     cursor.execute(
@@ -773,9 +781,10 @@ def save_group_message(
             caption,
             file_path,
             forward_chat_id,
-            forward_message_id
+            forward_message_id,
+            quote_text
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             registered_group_id,
@@ -786,6 +795,7 @@ def save_group_message(
             file_path,
             forward_chat_id,
             forward_message_id,
+            quote_text,
         ),
     )
 
@@ -813,7 +823,8 @@ def get_group_message(
             forward_message_id,
             schedule_minutes,
             created_at,
-            updated_at
+            updated_at,
+            quote_text
         FROM group_messages
         WHERE registered_group_id=?
         AND user_id=?
