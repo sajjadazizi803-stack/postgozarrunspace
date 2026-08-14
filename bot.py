@@ -157,6 +157,12 @@ def training_keyboard():
                     callback_data="training_add_lines",
                 ),
             ],
+            [
+                InlineKeyboardButton(
+                    "🔐 اتصال اکانت",
+                    callback_data="training_account",
+                ),
+            ],
         ]
     )
 
@@ -336,6 +342,15 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "connect_account":
 
         await connect_account(
+            update,
+            context,
+        )
+
+        return
+
+    if query.data == "training_account":
+
+        await training_account(
             update,
             context,
         )
@@ -551,6 +566,63 @@ async def training_add_lines(update, context):
         ),
         parse_mode="HTML",
     )
+
+    return
+
+
+# --------------------- training account -------------------
+
+
+async def training_account(update, context):
+
+    query = update.callback_query
+
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    photo_path = Path("images/training_account_connect.jpg")
+
+    caption = (
+        "🔐 <b>اتصال اکانت به ربات</b>\n\n"
+        "<i>برای اتصال اکانت به ربات، حداقل به دو اکانت تلگرام نیاز دارید:</i>\n"
+        "👤 <b>اکانت اول:</b> اکانتی که می‌خواهید به ربات وصل شود.\n"
+        "👤 <b>اکانت دوم:</b> اکانتی که با آن داخل ربات کار می‌کنید.\n\n"
+        "<i>با اکانتی که قرار است به ربات وصل شود، وارد "
+        '<a href="https://my.telegram.org">my.telegram.org</a> '
+        "شوید و <b>API ID</b> و <b>API HASH</b> را دریافت کنید.</i>\n\n"
+        "<i>سپس <b>API ID</b> و <b>API HASH</b> و اطلاعاتی که ربات درخواست می‌کند "
+        "را از طریق <b>اکانت دوم</b> برای ربات بفرستید.</i>\n\n"
+        "📩 <b>وقتی ربات کد ورود خواست،</b> کدی را که برای "
+        "<b>اکانت اول</b> ارسال شده، با اکانت اصلی برای ربات بفرستید.\n\n"
+        "⚠️ <b>نکته مهم:</b> تمام مراحل را با یک اکانت انجام ندهید؛ "
+        "<i>در این حالت ممکن است تلگرام اجازه اتصال اکانت را ندهد.</i>"
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🔙 بازگشت به آموزش", callback_data="training_back")]]
+    )
+
+    if not photo_path.exists():
+
+        await query.message.chat.send_message(
+            caption,
+            reply_markup=keyboard,
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
+
+        return
+
+    with open(photo_path, "rb") as photo:
+
+        await query.message.chat.send_photo(
+            photo=photo,
+            caption=caption,
+            reply_markup=keyboard,
+            parse_mode="HTML",
+        )
 
     return
 
