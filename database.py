@@ -370,6 +370,30 @@ def get_user(telegram_id):
     return cursor.fetchone()
 
 
+# ------------------- register user ------------------
+
+
+def register_user(telegram_id, phone=None):
+    cursor.execute(
+        """
+        INSERT INTO users (
+            telegram_id,
+            phone
+        )
+        VALUES (?, ?)
+        ON CONFLICT(telegram_id)
+        DO UPDATE SET
+            phone = COALESCE(excluded.phone, users.phone)
+        """,
+        (
+            telegram_id,
+            phone,
+        ),
+    )
+
+    db.commit()
+
+
 # ------------------- set append last lines ------------------
 
 

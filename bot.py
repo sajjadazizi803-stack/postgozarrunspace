@@ -84,7 +84,10 @@ from database import get_account
 from telethon.errors import SessionPasswordNeededError
 from telethon.errors import PasswordHashInvalidError
 import asyncio
-from database import get_admin_statistics
+from database import (
+    get_admin_statistics,
+    register_user,
+)
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -296,8 +299,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     first_name = update.effective_user.first_name or "دوست عزیز"
 
-    try:
+    register_user(update.effective_user.id)
 
+    try:
         member = await context.bot.get_chat_member(
             chat_id=CHANNEL_USERNAME,
             user_id=update.effective_user.id,
