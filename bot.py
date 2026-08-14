@@ -119,16 +119,32 @@ def clear_waiting_state(context):
 
     context.user_data.pop("source_channel", None)
     context.user_data.pop("target_channel", None)
+
     context.user_data.pop("pending_source", None)
     context.user_data.pop("pending_target", None)
+
     context.user_data.pop("changing_source", None)
     context.user_data.pop("changing_target", None)
+
     context.user_data.pop("change_source_transfer_id", None)
     context.user_data.pop("change_target_transfer_id", None)
+
     context.user_data.pop("remove_lines_transfer_id", None)
     context.user_data.pop("append_lines_transfer_id", None)
+
+    context.user_data.pop("group_message_group_id", None)
+    context.user_data.pop("group_schedule_id", None)
+
+    context.user_data.pop("group_info_message_id", None)
+    context.user_data.pop("group_message_prompt_id", None)
+    context.user_data.pop("group_schedule_prompt_id", None)
+
     context.user_data.pop("conversation", None)
     context.user_data.pop("wait_group", None)
+
+    # اطلاعات ورود اکانت
+    context.user_data.pop("login_phone", None)
+    context.user_data.pop("phone_code_hash", None)
 
 
 # ---------------------- training keyboard --------------------
@@ -259,7 +275,7 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📊 <b>آمار ربات</b>\n\n"
         f"👥 تعداد کاربران: <b>{stats['users']}</b>\n"
         f"🔐 اکانت‌های متصل: <b>{stats['accounts']}</b>\n"
-        f"📢 انتقال‌های کانال (مبدا/مقصد): <b>{stats['transfers']}</b>\n"
+        f"📢 انتقال‌های کانال: <b>{stats['transfers']}</b>\n"
         f"📣 گروه‌های تبلیغاتی: <b>{stats['groups']}</b>"
     )
 

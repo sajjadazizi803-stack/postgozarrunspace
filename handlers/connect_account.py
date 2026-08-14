@@ -617,34 +617,6 @@ async def connect_account(
 
         return
 
-    # اکانت شخصی حداکثر 5 انتقال
-    if account_type == "user" and transfer_count >= 5:
-
-        text = (
-            "⚠️ <b>به حداکثر تعداد انتقال رسیده‌اید.</b>\n\n"
-            "با اکانت شخصی حداکثر ۵ انتقال می‌توانید ثبت کنید."
-        )
-
-        if update.callback_query:
-
-            await update.callback_query.answer()
-
-            await update.callback_query.edit_message_text(
-                text,
-                parse_mode="HTML",
-            )
-
-        else:
-
-            await update.message.reply_text(
-                text,
-                parse_mode="HTML",
-            )
-
-        context.user_data["state"] = State.NONE
-
-        return
-
     # ==========================================
     # شروع ثبت انتقال
     # ==========================================
