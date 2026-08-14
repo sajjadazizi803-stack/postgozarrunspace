@@ -84,6 +84,7 @@ from database import get_account
 from telethon.errors import SessionPasswordNeededError
 from telethon.errors import PasswordHashInvalidError
 import asyncio
+from database import get_admin_statistics
 
 CHANNEL_USERNAME = "@SADSSCS"
 
@@ -237,6 +238,37 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ هنوز عضو کانال نشدی.",
             show_alert=True,
         )
+
+
+# ------------------ admin panel ---------------------
+
+
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    # فقط ادمین اصلی
+    if user_id != ADMIN_ID:
+
+        return
+
+    stats = get_admin_statistics()
+
+    text = (
+        "👑 <b>پنل مدیریت RunSpace</b>\n\n"
+        "📊 <b>آمار ربات</b>\n\n"
+        f"👥 تعداد کاربران: <b>{stats['users']}</b>\n"
+        f"🔐 اکانت‌های متصل: <b>{stats['accounts']}</b>\n"
+        f"📢 انتقال‌های کانال (مبدا/مقصد): <b>{stats['transfers']}</b>\n"
+        f"📣 گروه‌های تبلیغاتی: <b>{stats['groups']}</b>"
+    )
+
+    await update.message.reply_text(
+        text,
+        parse_mode="HTML",
+    )
+
+    return
 
 
 # =========================
@@ -1715,6 +1747,13 @@ def create_bot():
         CallbackQueryHandler(
             start_group_ads_callback,
             pattern=r"^start_group_ads_\d+$",
+        )
+    )
+
+    app.add_handler(
+        CommandHandler(
+            "admin",
+            admin_panel,
         )
     )
 

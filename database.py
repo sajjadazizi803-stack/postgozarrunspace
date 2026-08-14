@@ -909,3 +909,57 @@ def get_all_active_group_ads():
         """)
 
     return cursor.fetchall()
+
+
+# ================= ADMIN STATISTICS =================
+
+
+def get_admin_statistics():
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    # تعداد کاربران
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM users
+    """)
+
+    users_count = cur.fetchone()[0]
+
+    # تعداد اکانت‌های متصل
+    # فقط اکانت‌هایی که session دارند
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM accounts
+        WHERE session IS NOT NULL
+        AND session != ''
+    """)
+
+    connected_accounts = cur.fetchone()[0]
+
+    # تعداد انتقال‌های کانال
+    # هر رکورد یک مبدا + مقصد محسوب می‌شود
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM transfers
+    """)
+
+    transfers_count = cur.fetchone()[0]
+
+    # تعداد گروه‌های تبلیغاتی ثبت‌شده
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM registered_groups
+    """)
+
+    groups_count = cur.fetchone()[0]
+
+    conn.close()
+
+    return {
+        "users": users_count,
+        "accounts": connected_accounts,
+        "transfers": transfers_count,
+        "groups": groups_count,
+    }
