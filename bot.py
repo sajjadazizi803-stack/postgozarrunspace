@@ -344,11 +344,20 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "training_back":
 
-        await query.edit_message_text(
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
+
+        text = (
             "📚 <b>آموزش استفاده از ربات</b>\n\n"
             "برای مشاهده آموزش هر بخش، روی دکمه مورد نظر کلیک کنید.\n\n"
             "پیشنهاد می‌شود تمام بخش‌ها را با دقت مطالعه کنید "
-            "تا بتوانید بهتر از ربات استفاده کنید. ✅",
+            "تا بتوانید بهتر از ربات استفاده کنید. ✅"
+        )
+
+        await query.message.chat.send_message(
+            text,
             reply_markup=training_keyboard(),
             parse_mode="HTML",
         )
@@ -399,7 +408,12 @@ async def training_rules(update, context):
 
     query = update.callback_query
 
-    await query.edit_message_text(
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await query.message.chat.send_message(
         "<b>⚠️ نکات مهم قبل از اتصال کانال‌ها</b>\n\n"
         "• بعد از اینکه کانال مبدا و مقصد رو به ربات دادی، حتماً باید اکانت <b>@egpora_e3</b> داخل <b>کانال مقصد</b> ادمین باشه.\n\n"
         "• ربات <b>@Runspace_S_bot</b> هم باید داخل <b>کانال مقصد</b> ادمین باشه و اجازه ارسال پیام داشته باشه.\n\n"
@@ -424,6 +438,8 @@ async def training_rules(update, context):
         parse_mode="HTML",
     )
 
+    return
+
 
 # --------------------- training connect -------------------
 
@@ -432,7 +448,12 @@ async def training_connect(update, context):
 
     query = update.callback_query
 
-    await query.edit_message_text(
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await query.message.chat.send_message(
         "<b>📢 اتصال کانال‌ها</b>\n\n"
         "برای شروع کار با ربات، ابتدا از منوی اصلی روی گزینه:\n\n"
         "➕ <b>افزودن کانال</b>\n\n"
@@ -448,13 +469,16 @@ async def training_connect(update, context):
             [
                 [
                     InlineKeyboardButton(
-                        "🔙 بازگشت به آموزش", callback_data="training_back"
+                        "🔙 بازگشت به آموزش",
+                        callback_data="training_back",
                     )
                 ]
             ]
         ),
         parse_mode="HTML",
     )
+
+    return
 
 
 # --------------------- training delete lines -------------------
@@ -464,7 +488,12 @@ async def training_delete_lines(update, context):
 
     query = update.callback_query
 
-    await query.edit_message_text(
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await query.message.chat.send_message(
         "<b>✂️ حذف خطوط آخر</b>\n\n"
         "با این قابلیت می‌توانید چند خط آخر پست‌های کانال مبدا را حذف کنید.\n\n"
         "مثلاً اگر آخر همه پست‌ها تبلیغ، آیدی کانال یا متن اضافه وجود دارد، "
@@ -485,6 +514,8 @@ async def training_delete_lines(update, context):
         parse_mode="HTML",
     )
 
+    return
+
 
 # --------------------- training add lines -------------------
 
@@ -493,7 +524,12 @@ async def training_add_lines(update, context):
 
     query = update.callback_query
 
-    await query.edit_message_text(
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await query.message.chat.send_message(
         "<b>✍️ افزودن خطوط آخر</b>\n\n"
         "با این قابلیت می‌توانید یک متن ثابت به انتهای تمام پست‌های ارسالی اضافه کنید.\n\n"
         "برای مثال می‌توانید:\n\n"
@@ -515,6 +551,8 @@ async def training_add_lines(update, context):
         ),
         parse_mode="HTML",
     )
+
+    return
 
 
 # =========================
