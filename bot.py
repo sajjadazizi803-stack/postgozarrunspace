@@ -162,10 +162,6 @@ def training_keyboard():
                     "⚠️ نکات مهم",
                     callback_data="training_rules",
                 ),
-                InlineKeyboardButton(
-                    "📢 اتصال کانال‌ها",
-                    callback_data="training_connect",
-                ),
             ],
             [
                 InlineKeyboardButton(
@@ -440,15 +436,6 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    if query.data == "training_connect":
-
-        await training_connect(
-            update,
-            context,
-        )
-
-        return
-
     if query.data == "training_delete_lines":
 
         await training_delete_lines(
@@ -492,46 +479,6 @@ async def training_rules(update, context):
         "❗ اگر مراحل بالا رو درست انجام ندی، انتقال ثبت نمیشه یا پیام‌ها منتقل نخواهند شد.\n\n"
         "• بعد از ثبت انتقال، از قسمت <b>«📋 انتقال‌های ثبت شده»</b> می‌تونی انتقالت رو مدیریت کنی، مبدا یا مقصد رو تغییر بدی، انتقال رو متوقف یا فعال کنی و تنظیماتش رو تغییر بدی.\n\n"
         "💬 اگر هنگام استفاده از ربات با مشکلی روبه‌رو شدی یا پیشنهادی داشتی، خوشحال میشیم از قسمت <b>«پشتیبانی»</b> با ما در میون بذاری.",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🔙 بازگشت به آموزش",
-                        callback_data="training_back",
-                    )
-                ]
-            ]
-        ),
-        parse_mode="HTML",
-    )
-
-    return
-
-
-# --------------------- training connect -------------------
-
-
-async def training_connect(update, context):
-
-    query = update.callback_query
-
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await query.message.chat.send_message(
-        "<b>📢 اتصال کانال‌ها</b>\n\n"
-        "برای شروع کار با ربات، ابتدا از منوی اصلی روی گزینه:\n\n"
-        "➕ <b>افزودن کانال</b>\n\n"
-        "کلیک کنید.\n\n"
-        "سپس اطلاعات کانال‌ها را برای ربات ارسال کنید:\n\n"
-        "📌 <b>کانال مبدا:</b>\n"
-        "کانالی که می‌خواهید پست‌ها از آن دریافت شود.\n\n"
-        "📌 <b>کانال مقصد:</b>\n"
-        "کانالی که می‌خواهید پست‌ها در آن ارسال شود.\n\n"
-        "بعد از اتصال، ربات پست‌های جدید کانال مبدا را دریافت کرده "
-        "و در کانال مقصد ارسال می‌کند. ✅",
         reply_markup=InlineKeyboardMarkup(
             [
                 [
