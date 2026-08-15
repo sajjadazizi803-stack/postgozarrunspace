@@ -405,6 +405,15 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+    if query.data == "faq_login_code_expired":
+
+        await faq_login_code_expired(
+            update,
+            context,
+        )
+
+        return
+
     if query.data == "training_account":
 
         await training_account(
@@ -605,12 +614,64 @@ async def training_faq(update, context):
             [
                 [
                     InlineKeyboardButton(
+                        "❓ چرا ربات میگه کد ورود منقضی شده؟",
+                        callback_data="faq_login_code_expired",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
                         "🔙 بازگشت به آموزش",
                         callback_data="training_back",
                     )
-                ]
+                ],
             ]
         ),
+        parse_mode="HTML",
+    )
+
+    return
+
+
+# -------------------- faq login code expired -------------------
+
+
+async def faq_login_code_expired(update, context):
+
+    query = update.callback_query
+
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    text = (
+        "❓ <b>سؤال:</b>\n"
+        "چرا ربات میگه کد ورود منقضی شده؟\n\n"
+        "💡 <b>پاسخ:</b>\n\n"
+        "این مشکل معمولاً به این دلیل پیش میاد که برای اتصال اکانت، "
+        "همه مراحل رو با یک اکانت انجام می‌دید.\n\n"
+        "برای اتصال اکانت باید از <b>دو اکانت تلگرام</b> استفاده کنید:\n\n"
+        "👤 با <b>یک اکانت</b> کد ورود را از تلگرام دریافت کنید.\n"
+        "🤖 با <b>اکانت دیگر</b> وارد ربات شوید و کدی که برای اکانت اول "
+        "ارسال شده را برای ربات بفرستید.\n\n"
+        "⚠️ پیشنهاد می‌شود قبل از اتصال، بخش "
+        "<b>🔐 اتصال اکانت</b> در آموزش را مطالعه کنید."
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "🔙 بازگشت به سوالات متداول",
+                    callback_data="training_faq",
+                )
+            ]
+        ]
+    )
+
+    await query.message.chat.send_message(
+        text,
+        reply_markup=keyboard,
         parse_mode="HTML",
     )
 
