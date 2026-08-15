@@ -29,6 +29,7 @@ from database import get_user_transfer_count
 from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.types import InputPeerChannel
 import config
+from pathlib import Path
 import json
 
 from database import (
@@ -2353,8 +2354,6 @@ async def start_group_ads_callback(
             if isinstance(saved_files, list):
 
                 valid_files = []
-
-                from pathlib import Path
 
                 for saved_file in saved_files:
 
