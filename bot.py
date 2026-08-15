@@ -159,12 +159,6 @@ def training_keyboard():
         [
             [
                 InlineKeyboardButton(
-                    "⚠️ نکات مهم",
-                    callback_data="training_rules",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
                     "✂️ حذف خطوط آخر",
                     callback_data="training_delete_lines",
                 ),
@@ -177,6 +171,12 @@ def training_keyboard():
                 InlineKeyboardButton(
                     "🔐 اتصال اکانت",
                     callback_data="training_account",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "❓ سوالات متداول",
+                    callback_data="training_faq",
                 ),
             ],
         ]
@@ -396,6 +396,15 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+    if query.data == "training_faq":
+
+        await training_faq(
+            update,
+            context,
+        )
+
+        return
+
     if query.data == "training_account":
 
         await training_account(
@@ -427,15 +436,6 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    if query.data == "training_rules":
-
-        await training_rules(
-            update,
-            context,
-        )
-
-        return
-
     if query.data == "training_delete_lines":
 
         await training_delete_lines(
@@ -453,46 +453,6 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         return
-
-
-# --------------------- training rules -------------------
-
-
-async def training_rules(update, context):
-
-    query = update.callback_query
-
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await query.message.chat.send_message(
-        "<b>⚠️ نکات مهم قبل از اتصال کانال‌ها</b>\n\n"
-        "• بعد از اینکه کانال مبدا و مقصد رو به ربات دادی، حتماً باید اکانت <b>@egpora_e3</b> داخل <b>کانال مقصد</b> ادمین باشه.\n\n"
-        "• ربات <b>@Runspace_S_bot</b> هم باید داخل <b>کانال مقصد</b> ادمین باشه و اجازه ارسال پیام داشته باشه.\n\n"
-        "• کانال مبدا و کانال مقصد <b>حتماً باید عمومی (Public)</b> باشن.\n\n"
-        "• این ربات فقط برای <b>انتقال بین کانال‌ها</b> ساخته شده و از <b>گروه‌ها پشتیبانی نمی‌کنه.</b>\n\n"
-        "• اکانت و ربات <b>فقط در کانال مقصد</b> باید ادمین باشن و در کانال مبدا نیازی به ادمین بودن نیست.\n\n"
-        "• بعد از اینکه کانال مبدا و مقصد رو ثبت کردی و اکانت و ربات رو ادمین کردی، روی دکمه <b>«✅ انجام شد»</b> بزن.\n\n"
-        "• هر کاربر فقط <b>یک انتقال</b> می‌تونه ثبت کنه. اگر بعداً خواستی مبدا یا مقصد رو تغییر بدی، از قسمت <b>«📋 انتقال‌های ثبت شده»</b> این کار رو انجام بده و دوباره انتقال جدید نساز.\n\n"
-        "❗ اگر مراحل بالا رو درست انجام ندی، انتقال ثبت نمیشه یا پیام‌ها منتقل نخواهند شد.\n\n"
-        "• بعد از ثبت انتقال، از قسمت <b>«📋 انتقال‌های ثبت شده»</b> می‌تونی انتقالت رو مدیریت کنی، مبدا یا مقصد رو تغییر بدی، انتقال رو متوقف یا فعال کنی و تنظیماتش رو تغییر بدی.\n\n"
-        "💬 اگر هنگام استفاده از ربات با مشکلی روبه‌رو شدی یا پیشنهادی داشتی، خوشحال میشیم از قسمت <b>«پشتیبانی»</b> با ما در میون بذاری.",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🔙 بازگشت به آموزش",
-                        callback_data="training_back",
-                    )
-                ]
-            ]
-        ),
-        parse_mode="HTML",
-    )
-
-    return
 
 
 # --------------------- training delete lines -------------------
@@ -622,6 +582,37 @@ async def training_account(update, context):
             reply_markup=keyboard,
             parse_mode="HTML",
         )
+
+    return
+
+
+# --------------------- training faq -------------------
+
+
+async def training_faq(update, context):
+
+    query = update.callback_query
+
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await query.message.chat.send_message(
+        "<b>❓ سوالات متداول</b>\n\n"
+        "👇 برای مشاهده پاسخ هر سؤال، روی سؤال موردنظر بزنید.",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🔙 بازگشت به آموزش",
+                        callback_data="training_back",
+                    )
+                ]
+            ]
+        ),
+        parse_mode="HTML",
+    )
 
     return
 
