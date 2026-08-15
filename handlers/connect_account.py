@@ -26,7 +26,12 @@ from telethon.errors import UserNotParticipantError
 from telethon.tl import functions
 from database import update_transfer_target
 from database import get_user_transfer_count
-from telethon.tl.functions.messages import ImportChatInviteRequest
+
+from telethon.tl.functions.messages import (
+    ImportChatInviteRequest,
+    CheckChatInviteRequest,
+)
+
 from telethon.tl.types import InputPeerChannel
 import config
 from pathlib import Path
@@ -349,49 +354,48 @@ async def receive_group(
         # لینک دعوت خصوصی
         # -----------------------------------------
 
-        if "t.me/+" in group_link:
+        normalized_link = group_link.strip()
 
-            invite_hash = (
-                group_link.split(
+        if "t.me/+" in normalized_link or "t.me/joinchat/" in normalized_link:
+
+            if "t.me/+" in normalized_link:
+
+                invite_hash = normalized_link.split(
                     "t.me/+",
                     1,
                 )[1]
-                .split(
-                    "?",
-                    1,
-                )[0]
-                .strip("/")
-            )
 
-            result = await user_client(ImportChatInviteRequest(invite_hash))
+            else:
 
-            if getattr(result, "chats", None):
-
-                entity = result.chats[0]
-
-        # -----------------------------------------
-        # لینک دعوت قدیمی
-        # -----------------------------------------
-
-        elif "t.me/joinchat/" in group_link:
-
-            invite_hash = (
-                group_link.split(
+                invite_hash = normalized_link.split(
                     "t.me/joinchat/",
                     1,
                 )[1]
-                .split(
-                    "?",
-                    1,
-                )[0]
-                .strip("/")
-            )
 
-            result = await user_client(ImportChatInviteRequest(invite_hash))
+            invite_hash = invite_hash.split("?", 1)[0].strip("/")
 
-            if getattr(result, "chats", None):
+            # اول بررسی می‌کنیم اکانت از قبل عضو گروه هست یا نه
+            try:
 
-                entity = result.chats[0]
+                invite_info = await user_client(CheckChatInviteRequest(invite_hash))
+
+                # اگر قبلاً عضو گروه باشد
+                if hasattr(invite_info, "chat"):
+
+                    entity = invite_info.chat
+
+            except Exception:
+
+                # اگر عضو نباشد، با لینک وارد گروه می‌شویم
+                result = await user_client(ImportChatInviteRequest(invite_hash))
+
+                if getattr(
+                    result,
+                    "chats",
+                    None,
+                ):
+
+                    entity = result.chats[0]
 
         # -----------------------------------------
         # گروه عمومی
