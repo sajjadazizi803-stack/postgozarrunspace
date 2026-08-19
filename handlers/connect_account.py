@@ -626,45 +626,6 @@ async def connect_account(
             return
 
     # ==========================================
-    # محدودیت تعداد انتقال
-    # ==========================================
-
-    transfer_count = get_user_transfer_count(
-        user_id,
-        account_type,
-    )
-
-    # اکانت ربات فقط 1 انتقال
-    if account_type == "bot" and transfer_count >= 1:
-
-        text = (
-            "⚠️ <b>شما قبلاً یک انتقال با اکانت ربات ثبت کرده‌اید.</b>\n\n"
-            "برای تغییر کانال مبدا یا مقصد، "
-            "به بخش «📋 انتقال‌های ثبت شده» بروید "
-            "و از همان‌جا کانال موردنظر را تغییر دهید."
-        )
-
-        if update.callback_query:
-
-            await update.callback_query.answer()
-
-            await update.callback_query.edit_message_text(
-                text,
-                parse_mode="HTML",
-            )
-
-        else:
-
-            await update.message.reply_text(
-                text,
-                parse_mode="HTML",
-            )
-
-        context.user_data["state"] = State.NONE
-
-        return
-
-    # ==========================================
     # شروع ثبت انتقال
     # ==========================================
 
@@ -840,7 +801,7 @@ async def receive_source_channel(
 
     account_type = context.user_data.get(
         "transfer_account_type",
-        "bot",
+        "user",
     )
 
     if account_type == "user":
@@ -1110,7 +1071,7 @@ async def receive_target_channel(
 
     account_type = context.user_data.get(
         "transfer_account_type",
-        "bot",
+        "user",
     )
 
     if account_type == "user":
@@ -1198,13 +1159,6 @@ async def receive_target_channel(
     context.user_data["state"] = State.NONE
 
     if account_type == "bot":
-
-        admin_text = """🤖 حالا اکانت زیر را در کانال مقصد ادمین کنید:
-@egpora_e3
-
-بعد از ادمین کردن اکانت، روی «✅ انجام شد» بزنید."""
-
-    else:
 
         admin_text = """👤 حالا همان اکانتی که به ربات وصل کرده‌اید را در کانال مقصد ادمین کنید.
 
@@ -3101,13 +3055,7 @@ async def finish_transfer(
 
     target_channel = context.user_data.get("pending_target")
 
-    account_type = context.user_data.get(
-        "transfer_account_type",
-        context.user_data.get(
-            "account_type",
-            "bot",
-        ),
-    )
+    account_type = "user"
 
     if not source_channel or not target_channel:
 

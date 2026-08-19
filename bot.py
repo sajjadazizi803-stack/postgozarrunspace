@@ -892,44 +892,17 @@ async def text_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "📢 کانال":
 
-        context.user_data["transfer_menu"] = "ACCOUNT"
-
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["👤 با اکانت خودم", "🤖 با اکانت ربات"],
-                ["🏠", "🔙"],
-            ],
-            resize_keyboard=True,
-        )
-
-        await update.message.reply_text(
-            "روش انتقال را انتخاب کنید:",
-            reply_markup=keyboard,
-        )
-
-        return
-
-    if text == "👤 با اکانت خودم":
-
         context.user_data["transfer_account_type"] = "user"
-
-        await connect_account(update, context)
-
-        return
-
-    if text == "🤖 با اکانت ربات":
-
-        context.user_data["transfer_account_type"] = "bot"
-        context.user_data["account_type"] = "bot"
-        context.user_data["client_type"] = "bot"
-        context.user_data["use_bot_session"] = True
+        context.user_data["account_type"] = "user"
+        context.user_data["client_type"] = "user"
+        context.user_data["use_bot_session"] = False
 
         await connect_account(
             update,
             context,
         )
 
-        return
+        raise ApplicationHandlerStop
 
     if text == "🏠":
 
