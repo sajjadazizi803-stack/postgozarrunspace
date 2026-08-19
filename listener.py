@@ -12,6 +12,7 @@ from database import (
     increase_sent_count,
     get_remove_last_lines,
     get_append_last_lines,
+    get_forwarding_enabled,
 )
 
 from telegram_client import tg_client
@@ -184,6 +185,94 @@ async def transfer_message(
                 append_text = get_append_last_lines(transfer_id)
             except Exception:
                 append_text = ""
+
+        # -----------------------------------------
+        # FORWARD MODE
+        # -----------------------------------------
+
+        forwarding_enabled = False
+
+        if transfer_id is not None:
+
+            try:
+                forwarding_enabled = get_forwarding_enabled(transfer_id)
+            except Exception:
+                forwarding_enabled = False
+
+        if forwarding_enabled:
+
+            forward_origin = getattr(
+                message,
+                "fwd_from",
+                None,
+            )
+
+            if forward_origin is None:
+
+                forward_origin = getattr(
+                    message,
+                    "forward_origin",
+                    None,
+                )
+
+            # فقط پیام‌هایی که واقعاً Forward شده‌اند
+            if forward_origin:
+
+                try:
+
+                    if message.grouped_id:
+
+                        album = []
+
+                        async for m in client.iter_messages(
+                            message.chat_id,
+                            limit=20,
+                        ):
+
+                            if m.grouped_id == message.grouped_id:
+                                album.append(m)
+
+                            elif album:
+                                break
+
+                        album.reverse()
+
+                        if album:
+
+                            await client.forward_messages(
+                                entity=target_entity,
+                                messages=[m.id for m in album],
+                                from_peer=message.chat_id,
+                            )
+
+                        else:
+
+                            await client.forward_messages(
+                                entity=target_entity,
+                                messages=message.id,
+                                from_peer=message.chat_id,
+                            )
+
+                    else:
+
+                        await client.forward_messages(
+                            entity=target_entity,
+                            messages=message.id,
+                            from_peer=message.chat_id,
+                        )
+
+                    if transfer_id is not None:
+
+                        try:
+                            increase_sent_count(transfer_id)
+                        except Exception:
+                            pass
+
+                    return True
+
+                except Exception:
+
+                    return False
 
         # -----------------------------------------
         # ALBUM

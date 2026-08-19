@@ -81,6 +81,13 @@ if "account_type" not in columns:
     db.commit()
 
 
+if "forwarding_enabled" not in columns:
+    cursor.execute(
+        "ALTER TABLE transfers ADD COLUMN forwarding_enabled INTEGER DEFAULT 0"
+    )
+    db.commit()
+
+
 # ================= GROUPS =================
 
 cursor.execute("""
@@ -987,3 +994,37 @@ def get_admin_statistics():
         "transfers": transfers_count,
         "groups": groups_count,
     }
+
+
+def get_forwarding_enabled(transfer_id):
+    cursor.execute(
+        """
+        SELECT forwarding_enabled
+        FROM transfers
+        WHERE id=?
+        """,
+        (transfer_id,),
+    )
+
+    result = cursor.fetchone()
+
+    if result:
+        return bool(result[0])
+
+    return False
+
+
+def set_forwarding_enabled(transfer_id, enabled):
+    cursor.execute(
+        """
+        UPDATE transfers
+        SET forwarding_enabled=?
+        WHERE id=?
+        """,
+        (
+            1 if enabled else 0,
+            transfer_id,
+        ),
+    )
+
+    db.commit()

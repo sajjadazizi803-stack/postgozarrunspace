@@ -38,6 +38,7 @@ from handlers.connect_account import (
     confirm_delete_group_callback,
     cancel_delete_group_callback,
     start_group_ads_callback,
+    toggle_forwarding_callback,
 )
 
 from handlers.connect_account import (
@@ -1693,6 +1694,12 @@ def create_bot():
     )
 
     app.add_handler(CallbackQueryHandler(transfer_settings, pattern=r"^settings_\d+$"))
+
+    app.add_handler(
+        CallbackQueryHandler(
+            toggle_forwarding_callback, pattern=r"^toggle_forwarding_\d+$"
+        )
+    )
     app.add_handler(
         CallbackQueryHandler(remove_lines_setting, pattern=r"^remove_lines_\d+$")
     )

@@ -53,6 +53,8 @@ from database import (
     set_group_schedule,
     delete_registered_group,
     set_group_enabled,
+    get_forwarding_enabled,
+    set_forwarding_enabled,
 )
 
 from telethon import TelegramClient
@@ -2968,6 +2970,12 @@ async def transfer_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     transfer_id = int(query.data.split("_")[1])
 
+    forwarding_enabled = get_forwarding_enabled(transfer_id)
+
+    forward_text = (
+        "📤 فورواردی: فعال✅️" if forwarding_enabled else "📤 فورواردی: غیرفعال❌️"
+    )
+
     keyboard = [
         [
             InlineKeyboardButton(
@@ -2977,6 +2985,12 @@ async def transfer_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(
                 "➕ افزودن خطوط آخر",
                 callback_data=f"append_lines_{transfer_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                forward_text,
+                callback_data=f"toggle_forwarding_{transfer_id}",
             ),
         ],
         [
@@ -2993,6 +3007,60 @@ async def transfer_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 تنظیماتی که می‌خواهید ربات روی هر پست اعمال کند را انتخاب کنید.""",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
+
+# -------------------- toggle forwarding callback --------------------
+
+
+async def toggle_forwarding_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+    await query.answer()
+
+    transfer_id = int(query.data.split("_")[2])
+
+    current = get_forwarding_enabled(transfer_id)
+
+    new_status = not current
+
+    set_forwarding_enabled(
+        transfer_id,
+        new_status,
+    )
+
+    forwarding_text = (
+        "📤 فورواردی: فعال✅️" if new_status else "📤 فورواردی: غیرفعال❌️"
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "✂️ حذف خطوط آخر",
+                callback_data=f"remove_lines_{transfer_id}",
+            ),
+            InlineKeyboardButton(
+                "➕ افزودن خطوط آخر",
+                callback_data=f"append_lines_{transfer_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                forwarding_text,
+                callback_data=f"toggle_forwarding_{transfer_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data=f"transfer_{transfer_id}",
+            ),
+        ],
+    ]
+
+    await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 # -------------------- remove lines setting --------------------
