@@ -1158,9 +1158,7 @@ async def receive_target_channel(
 
     context.user_data["state"] = State.NONE
 
-    if account_type == "bot":
-
-        admin_text = """👤 حالا همان اکانتی که به ربات وصل کرده‌اید را در کانال مقصد ادمین کنید.
+    admin_text = """👤 حالا همان اکانتی که به ربات وصل کرده‌اید را در کانال مقصد ادمین کنید.
 
 بعد از ادمین کردن اکانت، روی «✅ انجام شد» بزنید."""
 
