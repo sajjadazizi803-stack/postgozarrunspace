@@ -278,6 +278,27 @@ async def start_group_registration(
     user_id = update.effective_user.id
 
     # -----------------------------------------
+    # محدودیت: هر کاربر فقط یک گروه
+    # -----------------------------------------
+
+    existing_groups = get_user_groups(user_id)
+
+    if existing_groups:
+
+        await update.message.reply_text(
+            """⚠️ <b>شما قبلاً یک گروه ثبت کرده‌اید.</b>
+
+برای ثبت گروه جدید، ابتدا از بخش «📋 انتقال‌های ثبت شده» گروه فعلی خود را حذف کنید.
+
+بعد از حذف گروه قبلی، می‌توانید گروه جدید ثبت کنید.""",
+            parse_mode="HTML",
+        )
+
+        context.user_data["state"] = State.NONE
+
+        return
+
+    # -----------------------------------------
     # بررسی اتصال اکانت کاربر
     # -----------------------------------------
 
@@ -327,6 +348,27 @@ async def receive_group(
         return
 
     user_id = update.effective_user.id
+
+    # -----------------------------------------
+    # محدودیت: هر کاربر فقط یک گروه
+    # -----------------------------------------
+
+    existing_groups = get_user_groups(user_id)
+
+    if existing_groups:
+
+        context.user_data["state"] = State.NONE
+
+        await update.message.reply_text(
+            """⚠️ <b>شما قبلاً یک گروه ثبت کرده‌اید.</b>
+
+برای ثبت گروه جدید، ابتدا گروه فعلی خود را از بخش «📋 انتقال‌های ثبت شده» حذف کنید.
+
+بعد از حذف گروه قبلی، می‌توانید گروه جدید ثبت کنید.""",
+            parse_mode="HTML",
+        )
+
+        return
 
     group_link = update.message.text.strip()
 
