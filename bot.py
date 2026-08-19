@@ -1203,10 +1203,11 @@ async def conversation_router(update, context):
 
             return
 
-        if minutes < 1:
+        if minutes < 60:
 
             await update.message.reply_text(
-                "❌ زمان‌بندی نمی‌تواند کمتر از ۱ دقیقه باشد."
+                "❌ زمان‌بندی باید حداقل ۶۰ دقیقه باشد.\n\n"
+                "لطفاً عددی برابر یا بیشتر از ۶۰ دقیقه ارسال کنید."
             )
 
             return
